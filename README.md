@@ -33,6 +33,7 @@ INFO: Initializing Thinking Tools MCP Server v1.0.0
 INFO: Registering Recursive Thinking tools...
 INFO: Registering Sequential Thinking tools...
 INFO: Registering Tree of Thoughts tools...
+INFO: Registering Conversation Memory tools...
 ```
 
 Press `Ctrl+C` to stop.
@@ -78,6 +79,21 @@ Create `.vscode/settings.json`:
 3. VSCode/Cursor: Check MCP panel for server status
 
 ## 🧠 Available Tools
+
+### [Conversation Memory](docs/conversation-memory.md)
+
+Store and retrieve important conversation context using ChromaDB vector database.
+
+**Best for**: Maintaining context across conversations, remembering important decisions, building knowledge base
+
+**Quick Example**:
+```
+1. Store conversation summary with speaker info
+2. Query relevant past conversations
+3. Build context-aware responses
+```
+
+[📖 Full Documentation →](docs/conversation-memory.md) | [🔧 Setup Guide →](docs/conversation-memory-setup.md)
 
 ### [Recursive Thinking](docs/recursive-thinking.md)
 
@@ -134,6 +150,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 
 | Tool | Structure | Best For | Complexity |
 |------|-----------|----------|------------|
+| **Conversation Memory** | Vector DB storage | Context retention, knowledge base | Low |
 | **Recursive Thinking** | Iterative refinement | Deep analysis, verification needed | High |
 | **Sequential Thinking** | Linear progression | Step-by-step planning | Medium |
 | **Tree of Thoughts** | Branching exploration | Comparing multiple options | High |
@@ -141,6 +158,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 ## � Documentation
 
 - **Tools**:
+  - [Conversation Memory Guide](docs/conversation-memory.md)
   - [Recursive Thinking Guide](docs/recursive-thinking.md)
   - [Sequential Thinking Guide](docs/sequential-thinking.md)
   - [Tree of Thoughts Guide](docs/tree-of-thoughts.md)
