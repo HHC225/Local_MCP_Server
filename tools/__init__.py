@@ -10,6 +10,7 @@ from .reasoning.recursive_thinking_tool import (
 )
 from .reasoning.sequential_thinking_tool import SequentialThinkingTool
 from .reasoning.tree_of_thoughts_tool import TreeOfThoughtsTool
+from .memory.conversation_memory_tool import ConversationMemoryTool
 
 __all__ = [
     'Rcursive_ThinkingInitializeTool',
@@ -18,5 +19,6 @@ __all__ = [
     'Rcursive_ThinkingGetResultTool',
     'Rcursive_ThinkingResetTool',
     'SequentialThinkingTool',
-    'TreeOfThoughtsTool'
+    'TreeOfThoughtsTool',
+    'ConversationMemoryTool'
 ]
