@@ -40,6 +40,9 @@ class ServerConfig:
     # Feature Flags - Tree of Thoughts Tools
     ENABLE_TOT_TOOLS: bool = os.getenv("ENABLE_TOT_TOOLS", "true").lower() == "true"
     
+    # Feature Flags - Conversation Memory Tools
+    ENABLE_CONVERSATION_MEMORY_TOOLS: bool = os.getenv("ENABLE_CONVERSATION_MEMORY_TOOLS", "true").lower() == "true"
+    
     # Feature Flags - Future tools placeholder
     ENABLE_FUTURE_TOOL_1: bool = os.getenv("ENABLE_FUTURE_TOOL_1", "false").lower() == "true"
     ENABLE_FUTURE_TOOL_2: bool = os.getenv("ENABLE_FUTURE_TOOL_2", "false").lower() == "true"
@@ -48,6 +51,10 @@ class ServerConfig:
     Rcursive_Thinking_DEFAULT_LATENT_UPDATES: int = int(os.getenv("Rcursive_Thinking_DEFAULT_LATENT_UPDATES", "4"))
     Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS: int = int(os.getenv("Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS", "16"))
     Rcursive_Thinking_SESSION_TIMEOUT: int = int(os.getenv("Rcursive_Thinking_SESSION_TIMEOUT", "3600"))  # seconds
+    
+    # Conversation Memory Specific Configuration
+    CONVERSATION_MEMORY_DB_PATH: str = os.getenv("CONVERSATION_MEMORY_DB_PATH", "./chroma_db")
+    CONVERSATION_MEMORY_DEFAULT_RESULTS: int = int(os.getenv("CONVERSATION_MEMORY_DEFAULT_RESULTS", "5"))
     
     # Authentication (if needed)
     AUTH_ENABLED: bool = os.getenv("MCP_AUTH_ENABLED", "false").lower() == "true"

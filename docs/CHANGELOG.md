@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-10-14
+
+### Added
+- **Conversation Memory Tool** with ChromaDB integration
+  - Store important conversation summaries with speaker tracking
+  - Semantic search for retrieving relevant conversations
+  - Automatic embedding generation (no manual embedding needed)
+  - Metadata filtering and organization
+  - List, delete, and clear operations
+  - Persistent storage across server restarts
+- New `tools/memory/` directory for memory-related tools
+- ChromaDB dependency (v1.1.1) with automatic embedding support
+- Comprehensive documentation:
+  - Full feature guide: `docs/conversation-memory.md`
+  - Setup and configuration: `docs/conversation-memory-setup.md`
+- Test suite: `test_conversation_memory.py`
+- Configuration options:
+  - `ENABLE_CONVERSATION_MEMORY_TOOLS` flag
+  - `CONVERSATION_MEMORY_DB_PATH` for custom database location
+  - `CONVERSATION_MEMORY_DEFAULT_RESULTS` for query limits
+
+### Changed
+- Reorganized tool structure: memory tools now in separate directory
+- Updated `requirements.txt` with all installed dependencies (generated from pip freeze)
+- Enhanced README with Conversation Memory section
+- Updated `.gitignore` to exclude ChromaDB database files
+
+### Technical Details
+- ChromaDB uses `all-MiniLM-L6-v2` embedding model (384 dimensions)
+- Automatic persistence to disk (SQLite + embeddings)
+- Semantic similarity search with distance scoring
+- Support for custom metadata schemas
+
 ## [1.0.0] - 2025-10-13
 
 ### Added

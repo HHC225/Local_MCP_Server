@@ -48,6 +48,10 @@ venv.bak/
 logs/
 log/
 
+# ChromaDB Vector Database
+chroma_db/
+*.chroma
+
 # OS
 .DS_Store
 .DS_Store?
@@ -83,7 +87,12 @@ dmypy.json
 backup/
 bk/
 
-# Admin/Deployment scripts (관리자 전용)
+# Tests directory - Don't track test files and test data
+tests/
+test_*.py
+*_test.py
+
+# Admin/Deployment scripts (Admin only)
 setup_git.sh
 deploy.sh
 admin_*.sh
@@ -91,7 +100,7 @@ setup_*.sh
 ADMIN_*.md
 DEPLOYMENT_*.md
 
-# Local configuration (로컬 설정)
+# Local configuration
 config.local.py
 settings.local.py
 *.local.json
