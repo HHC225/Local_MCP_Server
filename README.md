@@ -155,7 +155,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 | **Sequential Thinking** | Linear progression | Step-by-step planning | Medium |
 | **Tree of Thoughts** | Branching exploration | Comparing multiple options | High |
 
-## � Documentation
+## 📖 Documentation
 
 - **Tools**:
   - [Conversation Memory Guide](docs/conversation-memory.md)
