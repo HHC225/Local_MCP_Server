@@ -2,6 +2,50 @@
 
 Advanced reasoning tools for AI assistants powered by Model Context Protocol (MCP). This server provides structured thinking methodologies for complex problem-solving.
 
+## 📁 Project Structure
+
+```
+Local_MCP_Server/
+├── main.py                 # Server entry point & tool registration
+├── config.py              # Configuration management
+├── requirements.txt       # Python dependencies
+│
+├── tools/                 # Tool implementations (business logic)
+│   ├── base.py           # Base tool classes
+│   ├── memory/           # Memory tools
+│   │   └── conversation_memory_tool.py
+│   └── reasoning/        # Reasoning tools
+│       ├── recursive_thinking_tool.py
+│       ├── sequential_thinking_tool.py
+│       └── tree_of_thoughts_tool.py
+│
+├── wrappers/             # MCP registration wrappers
+│   ├── memory/           # Memory tool wrappers
+│   │   └── conversation_memory_wrappers.py
+│   └── reasoning/        # Reasoning tool wrappers
+│       ├── recursive_thinking_wrappers.py
+│       ├── sequential_thinking_wrapper.py
+│       └── tree_of_thoughts_wrapper.py
+│
+├── utils/                # Utilities
+│   └── logger.py        # Logging configuration
+│
+├── chroma_db/           # ChromaDB persistent storage
+└── docs/                # Documentation
+```
+
+### Architecture Design
+
+**Separation of Concerns**:
+- **`tools/`**: Core tool implementations with business logic
+- **`wrappers/`**: MCP-specific wrappers with tool descriptions for registration
+- **`main.py`**: Central registration point that imports from `wrappers/`
+
+This structure ensures:
+- ✅ Clean separation between tool logic and MCP interface
+- ✅ Easy maintenance (modify wrappers without touching tool logic)
+- ✅ Scalability (add new tools without cluttering existing directories)
+
 ## ⚡ Quick Start
 
 ### 1. Clone and Install
