@@ -1,4 +1,4 @@
-# Thinking Tools MCP Server
+# Local MCP Server
 
 Advanced reasoning tools for AI assistants powered by Model Context Protocol (MCP). This server provides structured thinking methodologies for complex problem-solving.
 
