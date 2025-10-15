@@ -53,7 +53,7 @@ class ServerConfig:
     Rcursive_Thinking_SESSION_TIMEOUT: int = int(os.getenv("Rcursive_Thinking_SESSION_TIMEOUT", "3600"))  # seconds
     
     # Conversation Memory Specific Configuration
-    CONVERSATION_MEMORY_DB_PATH: str = os.getenv("CONVERSATION_MEMORY_DB_PATH", "./chroma_db")
+    CONVERSATION_MEMORY_DB_PATH: str = os.getenv("CHROMA_DB_PATH", os.getenv("CONVERSATION_MEMORY_DB_PATH", "./chroma_db"))
     CONVERSATION_MEMORY_DEFAULT_RESULTS: int = int(os.getenv("CONVERSATION_MEMORY_DEFAULT_RESULTS", "5"))
     
     # Authentication (if needed)
