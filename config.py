@@ -4,17 +4,19 @@ This module contains all server configuration settings.
 """
 import os
 from typing import Optional
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
+from pathlib import Path
 
 
 class ServerConfig:
     """
     Main server configuration class.
-    All settings can be overridden via environment variables.
+    Direct configuration without .env file dependency.
+    You can modify these values directly or override via environment variables.
     """
+    
+    # Base Directory
+    BASE_DIR: Path = Path(__file__).parent
+    OUTPUT_DIR: Path = BASE_DIR / "output"
     
     # Server Identity
     SERVER_NAME: str = os.getenv("MCP_SERVER_NAME", "Thinking Tools MCP Server")
@@ -43,6 +45,12 @@ class ServerConfig:
     # Feature Flags - Conversation Memory Tools
     ENABLE_CONVERSATION_MEMORY_TOOLS: bool = os.getenv("ENABLE_CONVERSATION_MEMORY_TOOLS", "true").lower() == "true"
     
+    # Feature Flags - Planning Tools
+    ENABLE_PLANNING_TOOLS: bool = os.getenv("ENABLE_PLANNING_TOOLS", "true").lower() == "true"
+    
+    # Feature Flags - WBS Execution Tools
+    ENABLE_WBS_EXECUTION_TOOLS: bool = os.getenv("ENABLE_WBS_EXECUTION_TOOLS", "true").lower() == "true"
+    
     # Feature Flags - Future tools placeholder
     ENABLE_FUTURE_TOOL_1: bool = os.getenv("ENABLE_FUTURE_TOOL_1", "false").lower() == "true"
     ENABLE_FUTURE_TOOL_2: bool = os.getenv("ENABLE_FUTURE_TOOL_2", "false").lower() == "true"
@@ -52,13 +60,25 @@ class ServerConfig:
     Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS: int = int(os.getenv("Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS", "16"))
     Rcursive_Thinking_SESSION_TIMEOUT: int = int(os.getenv("Rcursive_Thinking_SESSION_TIMEOUT", "3600"))  # seconds
     
-    # Conversation Memory Specific Configuration
-    CONVERSATION_MEMORY_DB_PATH: str = os.getenv("CHROMA_DB_PATH", os.getenv("CONVERSATION_MEMORY_DB_PATH", "./chroma_db"))
+    # Output Directories Configuration
+    # ChromaDB for Conversation Memory
+    CONVERSATION_MEMORY_DB_PATH: str = str(OUTPUT_DIR / "chroma_db")
     CONVERSATION_MEMORY_DEFAULT_RESULTS: int = int(os.getenv("CONVERSATION_MEMORY_DEFAULT_RESULTS", "5"))
+    
+    # Planning Tool Output Configuration
+    PLANNING_OUTPUT_DIR: Path = OUTPUT_DIR / "planning"
+    PLANNING_WBS_FILENAME: str = os.getenv("PLANNING_WBS_FILENAME", "WBS.md")
     
     # Authentication (if needed)
     AUTH_ENABLED: bool = os.getenv("MCP_AUTH_ENABLED", "false").lower() == "true"
     AUTH_PROVIDER: Optional[str] = os.getenv("MCP_AUTH_PROVIDER", None)
+    
+    @classmethod
+    def ensure_output_directories(cls) -> None:
+        """Ensure all output directories exist"""
+        cls.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        cls.PLANNING_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        Path(cls.CONVERSATION_MEMORY_DB_PATH).mkdir(parents=True, exist_ok=True)
     
     @classmethod
     def validate(cls) -> None:
@@ -76,7 +96,10 @@ class ServerConfig:
         
         if cls.Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS < 1:
             raise ValueError("Rcursive_Thinking_DEFAULT_MAX_IMPROVEMENTS must be at least 1")
+        
+        # Ensure output directories exist
+        cls.ensure_output_directories()
 
 
-# Validate configuration on import
+# Validate configuration and create directories on import
 ServerConfig.validate()

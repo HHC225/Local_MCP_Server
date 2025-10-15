@@ -48,9 +48,15 @@ venv.bak/
 logs/
 log/
 
-# ChromaDB Vector Database
+# ChromaDB Vector Database (old location - deprecated)
 chroma_db/
 *.chroma
+
+# Output directory - All tool-generated files
+output/
+*.md
+!README.md
+!docs/*.md
 
 # OS
 .DS_Store
