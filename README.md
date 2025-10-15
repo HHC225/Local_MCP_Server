@@ -99,7 +99,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-#### VSCode/Cursor
+#### VSCode/Cursor (macOS/Linux)
 
 Create `.vscode/settings.json`:
 
@@ -115,6 +115,36 @@ Create `.vscode/settings.json`:
 ```
 
 **Important**: Replace `/ABSOLUTE/PATH/TO/` with your actual path! Use `pwd` to get it.
+
+#### VSCode/Cursor (Windows with WSL)
+
+Edit `%APPDATA%\Code\User\mcp.json`:
+
+```json
+{
+  "servers": {
+    "thinking-tools": {
+      "command": "C:\\Windows\\System32\\wsl.exe",
+      "args": [
+        "-d", "Ubuntu",
+        "--cd", "/home/YOUR_USERNAME/Thinking_Tools_Local",
+        "/home/YOUR_USERNAME/Thinking_Tools_Local/.venv/bin/python3",
+        "/home/YOUR_USERNAME/Thinking_Tools_Local/main.py"
+      ],
+      "env": {
+        "NODE_ENV": "production",
+        "CHROMA_DB_PATH": "./chroma_db"
+      },
+      "type": "stdio"
+    }
+  }
+}
+```
+
+**Important**: 
+- Replace `YOUR_USERNAME` with your WSL username (use `whoami` in WSL to get it)
+- Replace `Ubuntu` with your WSL distribution name if different (use `wsl -l` in PowerShell)
+- Full path example: `/home/john/Thinking_Tools_Local`
 
 ### 4. Restart IDE and Verify
 
