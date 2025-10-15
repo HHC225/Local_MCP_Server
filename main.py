@@ -105,6 +105,36 @@ if ServerConfig.ENABLE_CONVERSATION_MEMORY_TOOLS:
 
 
 # ============================================================================
+# PLANNING TOOLS REGISTRATION
+# ============================================================================
+
+if ServerConfig.ENABLE_PLANNING_TOOLS:
+    from wrappers.planning.planning_wrapper import planning
+    
+    logger.info("Registering Planning tool...")
+    
+    # Register wrapper function as MCP tool
+    mcp.tool()(planning)
+    
+    logger.info("Planning tool registered successfully")
+
+
+# ============================================================================
+# WBS EXECUTION TOOLS REGISTRATION
+# ============================================================================
+
+if ServerConfig.ENABLE_WBS_EXECUTION_TOOLS:
+    from wrappers.planning.wbs_execution_wrapper import wbs_execution
+    
+    logger.info("Registering WBS Execution tool...")
+    
+    # Register wrapper function as MCP tool
+    mcp.tool()(wbs_execution)
+    
+    logger.info("WBS Execution tool registered successfully")
+
+
+# ============================================================================
 # FUTURE TOOLS REGISTRATION PLACEHOLDERS
 # Section for future tools to be added
 # ============================================================================

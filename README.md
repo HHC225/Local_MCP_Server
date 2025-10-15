@@ -7,13 +7,16 @@ Advanced reasoning tools for AI assistants powered by Model Context Protocol (MC
 ```
 Local_MCP_Server/
 ├── main.py                 # Server entry point & tool registration
-├── config.py              # Configuration management
+├── config.py              # Configuration management (no .env needed)
 ├── requirements.txt       # Python dependencies
 │
 ├── tools/                 # Tool implementations (business logic)
 │   ├── base.py           # Base tool classes
 │   ├── memory/           # Memory tools
 │   │   └── conversation_memory_tool.py
+│   ├── planning/         # Planning tools
+│   │   ├── planning_tool.py
+│   │   └── wbs_execution_tool.py
 │   └── reasoning/        # Reasoning tools
 │       ├── recursive_thinking_tool.py
 │       ├── sequential_thinking_tool.py
@@ -22,6 +25,9 @@ Local_MCP_Server/
 ├── wrappers/             # MCP registration wrappers
 │   ├── memory/           # Memory tool wrappers
 │   │   └── conversation_memory_wrappers.py
+│   ├── planning/         # Planning tool wrappers
+│   │   ├── planning_wrapper.py
+│   │   └── wbs_execution_wrapper.py
 │   └── reasoning/        # Reasoning tool wrappers
 │       ├── recursive_thinking_wrappers.py
 │       ├── sequential_thinking_wrapper.py
@@ -30,7 +36,10 @@ Local_MCP_Server/
 ├── utils/                # Utilities
 │   └── logger.py        # Logging configuration
 │
-├── chroma_db/           # ChromaDB persistent storage
+├── output/              # All tool-generated outputs
+│   ├── chroma_db/       # ChromaDB persistent storage
+│   └── planning/        # WBS and planning files
+│
 └── docs/                # Documentation
 ```
 
@@ -78,6 +87,8 @@ INFO: Registering Recursive Thinking tools...
 INFO: Registering Sequential Thinking tools...
 INFO: Registering Tree of Thoughts tools...
 INFO: Registering Conversation Memory tools...
+INFO: Registering Planning tool...
+INFO: Registering WBS Execution tool...
 ```
 
 Press `Ctrl+C` to stop.
@@ -202,6 +213,38 @@ Thought N: Final solution
 
 [📖 Full Documentation →](docs/sequential-thinking.md)
 
+### [Planning Tool](docs/planning.md)
+
+Create structured Work Breakdown Structures (WBS) before implementation to prevent common development issues.
+
+**Best for**: Project decomposition, task planning, WBS creation, dependency mapping
+
+**Quick Example**:
+```
+Step 1: Problem analysis and breakdown
+Step 2: Identify tasks and subtasks with WBS items
+Step 3: Add dependencies and priorities
+Step N: Final WBS export to markdown with checkboxes
+```
+
+[📖 Full Documentation →](docs/planning.md)
+
+### [WBS Execution Tool](docs/wbs-execution.md)
+
+Systematic task-by-task execution tool for WBS-based project implementation with real-time progress tracking.
+
+**Best for**: Implementing planned tasks, dependency-aware execution, progress tracking
+
+**Quick Example**:
+```
+1. Start: Load WBS file and create session
+2. Continue: Get next executable task
+3. Execute: Implement task with thinking analysis
+4. Repeat: Continue until all tasks complete
+```
+
+[📖 Full Documentation →](docs/wbs-execution.md)
+
 ### [Tree of Thoughts](docs/tree-of-thoughts.md)
 
 Explore multiple solution paths with branching, evaluation, and backtracking.
@@ -225,6 +268,8 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 | Tool | Structure | Best For | Complexity |
 |------|-----------|----------|------------|
 | **Conversation Memory** | Vector DB storage | Context retention, knowledge base | Low |
+| **Planning Tool** | WBS hierarchy | Project breakdown, task planning | Medium |
+| **WBS Execution Tool** | Task execution | Implementing WBS tasks systematically | Medium |
 | **Recursive Thinking** | Iterative refinement | Deep analysis, verification needed | High |
 | **Sequential Thinking** | Linear progression | Step-by-step planning | Medium |
 | **Tree of Thoughts** | Branching exploration | Comparing multiple options | High |
@@ -233,6 +278,8 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 
 - **Tools**:
   - [Conversation Memory Guide](docs/conversation-memory.md)
+  - [Planning Tool Guide](docs/planning.md)
+  - [WBS Execution Tool Guide](docs/wbs-execution.md)
   - [Recursive Thinking Guide](docs/recursive-thinking.md)
   - [Sequential Thinking Guide](docs/sequential-thinking.md)
   - [Tree of Thoughts Guide](docs/tree-of-thoughts.md)
@@ -241,10 +288,71 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
   - [Troubleshooting Guide](docs/troubleshooting.md)
   - [GitHub Issues](https://github.com/HHC225/Local_MCP_Server/issues)
 
+## ⚙️ Configuration
+
+This server uses **`config.py`** as the main configuration file - **no `.env` file needed**!
+
+### Direct Configuration
+
+Edit `config.py` directly to change settings:
+
+```python
+class ServerConfig:
+    # Server settings
+    SERVER_NAME: str = "Thinking Tools MCP Server"
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
+    
+    # Output directories (auto-created)
+    OUTPUT_DIR: Path = BASE_DIR / "output"
+    PLANNING_OUTPUT_DIR: Path = OUTPUT_DIR / "planning"
+    CONVERSATION_MEMORY_DB_PATH: str = str(OUTPUT_DIR / "chroma_db")
+    
+    # Planning tool
+    PLANNING_WBS_FILENAME: str = "WBS.md"
+    
+    # Feature flags
+    ENABLE_Rcursive_Thinking_TOOLS: bool = True
+    ENABLE_ST_TOOLS: bool = True
+    ENABLE_TOT_TOOLS: bool = True
+    ENABLE_CONVERSATION_MEMORY_TOOLS: bool = True
+    ENABLE_PLANNING_TOOLS: bool = True
+    ENABLE_WBS_EXECUTION_TOOLS: bool = True
+```
+
+### Environment Variable Overrides
+
+You can still override settings via environment variables:
+
+```bash
+# Temporary override for one session
+MCP_LOG_LEVEL=DEBUG python main.py
+
+# Or set in your shell profile
+export MCP_LOG_LEVEL=DEBUG
+export ENABLE_TOT_TOOLS=false
+```
+
+### Output Directory Structure
+
+All tool-generated files are organized under `output/`:
+
+```
+output/
+├── chroma_db/          # Conversation Memory database
+│   ├── chroma.sqlite3
+│   └── [vector data]
+└── planning/           # Planning tool WBS files
+    ├── Project_Name_WBS.md
+    └── Another_Project_WBS.md
+```
+
+**Note**: The `output/` directory is in `.gitignore` and created automatically on startup.
+
 ## 💡 Quick Tips
 
-- **Adjust Log Level**: Create `.env` file and set `MCP_LOG_LEVEL="DEBUG"`
-- **Enable/Disable Tools**: Use `ENABLE_*_TOOLS` settings in `.env`
+- **Adjust Log Level**: Edit `LOG_LEVEL` in `config.py` or use `MCP_LOG_LEVEL` env var
+- **Enable/Disable Tools**: Edit `ENABLE_*_TOOLS` in `config.py`
+- **Output Location**: All files go to `output/` directory (auto-organized)
 - **Save Session IDs**: Keep them in notepad for resuming later
 - **Use uv for Speed**: 10-100x faster than pip for installations
 
