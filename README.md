@@ -52,8 +52,8 @@ This structure ensures:
 
 ```bash
 # Clone repository
-git clone https://github.com/HHC225/Thinking_Tools_Local.git
-cd Thinking_Tools_Local
+git clone https://github.com/HHC225/Local_MCP_Server.git
+cd Local_MCP_Server
 
 # Install uv (fast Python package installer)
 curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS/Linux
@@ -92,8 +92,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "thinking-tools": {
-      "command": "/ABSOLUTE/PATH/TO/Thinking_Tools_Local/.venv/bin/python",
-      "args": ["/ABSOLUTE/PATH/TO/Thinking_Tools_Local/main.py"]
+      "command": "/ABSOLUTE/PATH/TO/Local_MCP_Server/.venv/bin/python",
+      "args": ["/ABSOLUTE/PATH/TO/Local_MCP_Server/main.py"]
     }
   }
 }
@@ -107,8 +107,8 @@ Create `.vscode/settings.json`:
 {
   "mcp.servers": {
     "thinking-tools": {
-      "command": "/ABSOLUTE/PATH/TO/Thinking_Tools_Local/.venv/bin/python",
-      "args": ["/ABSOLUTE/PATH/TO/Thinking_Tools_Local/main.py"]
+      "command": "/ABSOLUTE/PATH/TO/Local_MCP_Server/.venv/bin/python",
+      "args": ["/ABSOLUTE/PATH/TO/Local_MCP_Server/main.py"]
     }
   }
 }
@@ -127,9 +127,9 @@ Edit `%APPDATA%\Code\User\mcp.json`:
       "command": "C:\\Windows\\System32\\wsl.exe",
       "args": [
         "-d", "Ubuntu",
-        "--cd", "/home/YOUR_USERNAME/Thinking_Tools_Local",
-        "/home/YOUR_USERNAME/Thinking_Tools_Local/.venv/bin/python3",
-        "/home/YOUR_USERNAME/Thinking_Tools_Local/main.py"
+        "--cd", "/home/YOUR_USERNAME/Local_MCP_Server",
+        "/home/YOUR_USERNAME/Local_MCP_Server/.venv/bin/python3",
+        "/home/YOUR_USERNAME/Local_MCP_Server/main.py"
       ],
       "env": {
         "NODE_ENV": "production",
@@ -144,7 +144,7 @@ Edit `%APPDATA%\Code\User\mcp.json`:
 **Important**: 
 - Replace `YOUR_USERNAME` with your WSL username (use `whoami` in WSL to get it)
 - Replace `Ubuntu` with your WSL distribution name if different (use `wsl -l` in PowerShell)
-- Full path example: `/home/john/Thinking_Tools_Local`
+- Full path example: `/home/john/Local_MCP_Server`
 
 ### 4. Restart IDE and Verify
 
@@ -239,7 +239,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 - **Help**:
   - [Quick Start Guide](docs/quickstart.md)
   - [Troubleshooting Guide](docs/troubleshooting.md)
-  - [GitHub Issues](https://github.com/HHC225/Thinking_Tools_Local/issues)
+  - [GitHub Issues](https://github.com/HHC225/Local_MCP_Server/issues)
 
 ## 💡 Quick Tips
 
@@ -267,7 +267,7 @@ uv venv
 **⚠️ Important: All contributions must go through Pull Requests**
 
 1. Fork the repository on GitHub
-2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/Thinking_Tools_Local.git`
+2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/Local_MCP_Server.git`
 3. Create feature branch: `git checkout -b feature/your-feature`
 4. Make changes, test, and submit PR
 
@@ -279,4 +279,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Need help?** Check the [Troubleshooting Guide](docs/troubleshooting.md) or [open an issue](https://github.com/HHC225/Thinking_Tools_Local/issues)!
+**Need help?** Check the [Troubleshooting Guide](docs/troubleshooting.md) or [open an issue](https://github.com/HHC225/Local_MCP_Server/issues)!
