@@ -9,13 +9,14 @@ import chromadb
 from chromadb.config import Settings
 import json
 import os
+from pathlib import Path
 from ..base import ReasoningTool
 
 
 class ConversationMemoryTool(ReasoningTool):
     """Conversation Memory Tool for managing conversation context with ChromaDB"""
     
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str = "./output/chroma_db"):
         super().__init__(
             name="conversation_memory",
             description="ChromaDB-based conversation memory management tool"
@@ -23,7 +24,7 @@ class ConversationMemoryTool(ReasoningTool):
         
         # Initialize ChromaDB client with persistence
         self.persist_directory = persist_directory
-        os.makedirs(persist_directory, exist_ok=True)
+        Path(persist_directory).mkdir(parents=True, exist_ok=True)
         
         self.client = chromadb.PersistentClient(
             path=persist_directory,
