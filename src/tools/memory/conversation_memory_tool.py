@@ -23,22 +23,37 @@ class ConversationMemoryTool(ReasoningTool):
         )
         
         # Initialize ChromaDB client with persistence
-        self.persist_directory = persist_directory
-        Path(persist_directory).mkdir(parents=True, exist_ok=True)
+        self.persist_directory = os.path.abspath(persist_directory)
+        Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
         
+        # Initialize ChromaDB client with proper settings
         self.client = chromadb.PersistentClient(
-            path=persist_directory,
+            path=self.persist_directory,
             settings=Settings(
                 anonymized_telemetry=False,
-                allow_reset=True
+                allow_reset=True,
+                is_persistent=True
             )
         )
         
         # Get or create collection for conversation memories
-        self.collection = self.client.get_or_create_collection(
-            name="conversation_memories",
-            metadata={"description": "Stores important conversation summaries"}
-        )
+        # Use try-except to handle potential collection issues
+        try:
+            self.collection = self.client.get_or_create_collection(
+                name="conversation_memories",
+                metadata={"description": "Stores important conversation summaries"}
+            )
+        except Exception as e:
+            # If there's an error, try to reset and recreate
+            print(f"Warning: Error initializing collection, resetting: {e}")
+            try:
+                self.client.reset()
+            except:
+                pass
+            self.collection = self.client.get_or_create_collection(
+                name="conversation_memories",
+                metadata={"description": "Stores important conversation summaries"}
+            )
     
     async def execute(
         self,
@@ -96,6 +111,28 @@ class ConversationMemoryTool(ReasoningTool):
             Dict with storage confirmation and ID
         """
         try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                # Reinitialize client and collection
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
             # Generate ID if not provided
             if not conversation_id:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -182,6 +219,28 @@ class ConversationMemoryTool(ReasoningTool):
             Dict with query results
         """
         try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                # Reinitialize client and collection
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
             # Query ChromaDB with automatic embedding
             query_params = {
                 "query_texts": [query_text],
@@ -243,6 +302,27 @@ class ConversationMemoryTool(ReasoningTool):
             Dict with list of conversations
         """
         try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
             # Get all items from collection
             results = self.collection.get(
                 limit=limit,
@@ -297,6 +377,27 @@ class ConversationMemoryTool(ReasoningTool):
             Dict with deletion confirmation
         """
         try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
             self.collection.delete(ids=[conversation_id])
             
             await self.log_execution(
@@ -331,6 +432,27 @@ class ConversationMemoryTool(ReasoningTool):
             Dict with clear confirmation
         """
         try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
             # Get count before clearing
             count_before = self.collection.count()
             
