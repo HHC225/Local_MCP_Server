@@ -2,12 +2,12 @@
 Conversation Memory Tool Wrappers for MCP Registration
 """
 from fastmcp import Context
-from tools.memory.conversation_memory_tool import ConversationMemoryTool
-from config import ServerConfig
+from src.tools.memory.conversation_memory_tool import ConversationMemoryTool
+from configs.memory import MemoryConfig
 
 # Initialize tool instance
 _memory_tool = ConversationMemoryTool(
-    persist_directory=ServerConfig.CONVERSATION_MEMORY_DB_PATH
+    persist_directory=str(MemoryConfig.CONVERSATION_MEMORY_DB_PATH)
 )
 
 

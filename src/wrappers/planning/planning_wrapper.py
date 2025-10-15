@@ -2,12 +2,12 @@
 Planning Tool Wrapper for MCP Registration
 """
 from fastmcp import Context
-from tools.planning.planning_tool import PlanningTool
-from config import ServerConfig
+from src.tools.planning.planning_tool import PlanningTool
+from configs.planning import PlanningConfig
 from typing import List, Dict, Any, Optional
 
 # Initialize tool instance with configured output directory
-_planning_tool = PlanningTool(default_output_dir=ServerConfig.PLANNING_OUTPUT_DIR)
+_planning_tool = PlanningTool(default_output_dir=PlanningConfig.PLANNING_OUTPUT_DIR)
 
 
 async def planning(

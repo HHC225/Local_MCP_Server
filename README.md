@@ -7,53 +7,83 @@ Advanced reasoning tools for AI assistants powered by Model Context Protocol (MC
 ```
 Local_MCP_Server/
 ├── main.py                 # Server entry point & tool registration
-├── config.py              # Configuration management (no .env needed)
 ├── requirements.txt       # Python dependencies
 │
-├── tools/                 # Tool implementations (business logic)
-│   ├── base.py           # Base tool classes
-│   ├── memory/           # Memory tools
-│   │   └── conversation_memory_tool.py
-│   ├── planning/         # Planning tools
-│   │   ├── planning_tool.py
-│   │   └── wbs_execution_tool.py
-│   └── reasoning/        # Reasoning tools
-│       ├── recursive_thinking_tool.py
-│       ├── sequential_thinking_tool.py
-│       └── tree_of_thoughts_tool.py
+├── configs/               # 🆕 Modular configuration system
+│   ├── __init__.py       # Configuration loader
+│   ├── base.py           # Server & common settings
+│   ├── reasoning.py      # Recursive/Sequential/ToT tool configs
+│   ├── memory.py         # Conversation Memory tool config
+│   ├── planning.py       # Planning & WBS tool configs
+│   ├── slack.py          # Slack tools config (DO NOT commit)
+│   └── slack.py.template # Slack config template (commit this)
 │
-├── wrappers/             # MCP registration wrappers
-│   ├── memory/           # Memory tool wrappers
-│   │   └── conversation_memory_wrappers.py
-│   ├── planning/         # Planning tool wrappers
-│   │   ├── planning_wrapper.py
-│   │   └── wbs_execution_wrapper.py
-│   └── reasoning/        # Reasoning tool wrappers
-│       ├── recursive_thinking_wrappers.py
-│       ├── sequential_thinking_wrapper.py
-│       └── tree_of_thoughts_wrapper.py
+├── src/                   # 🆕 Source code directory
+│   ├── tools/            # Tool implementations (business logic)
+│   │   ├── base.py       # Base tool classes
+│   │   ├── memory/       # Memory tools
+│   │   │   └── conversation_memory_tool.py
+│   │   ├── planning/     # Planning tools
+│   │   │   ├── planning_tool.py
+│   │   │   └── wbs_execution_tool.py
+│   │   ├── reasoning/    # Reasoning tools
+│   │   │   ├── recursive_thinking_tool.py
+│   │   │   ├── sequential_thinking_tool.py
+│   │   │   └── tree_of_thoughts_tool.py
+│   │   └── slack/        # Slack integration tools
+│   │       ├── get_thread_content_tool.py
+│   │       ├── get_single_message_tool.py
+│   │       ├── post_message_tool.py
+│   │       ├── post_ephemeral_tool.py
+│   │       └── delete_message_tool.py
+│   │
+│   ├── wrappers/         # MCP registration wrappers
+│   │   ├── memory/       # Memory tool wrappers
+│   │   │   └── conversation_memory_wrappers.py
+│   │   ├── planning/     # Planning tool wrappers
+│   │   │   ├── planning_wrapper.py
+│   │   │   └── wbs_execution_wrapper.py
+│   │   ├── reasoning/    # Reasoning tool wrappers
+│   │   │   ├── recursive_thinking_wrappers.py
+│   │   │   ├── sequential_thinking_wrapper.py
+│   │   │   └── tree_of_thoughts_wrapper.py
+│   │   └── slack/        # Slack tool wrappers
+│   │       ├── get_thread_content_wrapper.py
+│   │       ├── get_single_message_wrapper.py
+│   │       ├── post_message_wrapper.py
+│   │       ├── post_ephemeral_wrapper.py
+│   │       └── delete_message_wrapper.py
+│   │
+│   └── utils/            # Utilities
+│       └── logger.py     # Logging configuration
 │
-├── utils/                # Utilities
-│   └── logger.py        # Logging configuration
+├── output/               # All tool-generated outputs
+│   ├── chroma_db/        # ChromaDB persistent storage
+│   └── planning/         # WBS and planning files
 │
-├── output/              # All tool-generated outputs
-│   ├── chroma_db/       # ChromaDB persistent storage
-│   └── planning/        # WBS and planning files
-│
-└── docs/                # Documentation
+└── docs/                 # Documentation
 ```
 
 ### Architecture Design
 
-**Separation of Concerns**:
-- **`tools/`**: Core tool implementations with business logic
-- **`wrappers/`**: MCP-specific wrappers with tool descriptions for registration
-- **`main.py`**: Central registration point that imports from `wrappers/`
+**Modular Configuration System** (🆕):
+- **`configs/`**: Each tool category has its own config module
+  - Easy to add new tools without modifying existing configs
+  - Clear separation of concerns per tool category
+  - Scalable for dozens of tools
+
+**Clear Source Directory Structure** (🆕):
+- **`src/`**: All source code organized under one directory
+  - **`src/tools/`**: Core tool implementations with business logic
+  - **`src/wrappers/`**: MCP-specific wrappers with tool descriptions
+  - **`src/utils/`**: Shared utilities and helpers
+- **`main.py`**: Central registration point at root level
 
 This structure ensures:
-- ✅ Clean separation between tool logic and MCP interface
-- ✅ Easy maintenance (modify wrappers without touching tool logic)
-- ✅ Scalability (add new tools without cluttering existing directories)
+- ✅ Clean separation between config, source, and output
+- ✅ Easy maintenance (modify tool configs independently)
+- ✅ Scalability (add new tool categories without clutter)
+- ✅ Clear distinction between source code and other files
 
 ## ⚡ Quick Start
 
@@ -263,6 +293,25 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 
 [📖 Full Documentation →](docs/tree-of-thoughts.md)
 
+### [Slack Tools](docs/slack-tools.md)
+
+Integrate with Slack to retrieve threads, post messages, and manage communications.
+
+**Best for**: Team collaboration, automated notifications, thread analysis
+
+**Quick Example**:
+```
+1. Get thread content (with all replies) for analysis
+2. Get single message (without replies) for quick lookup
+3. Post public messages to channels
+4. Send private ephemeral messages
+5. Delete messages when needed
+```
+
+**⚠️ Security Note**: This tool requires workspace credentials. Use template file for Git.
+
+[📖 Full Documentation →](docs/slack-tools.md)
+
 ## 🛠️ Tool Comparison
 
 | Tool | Structure | Best For | Complexity |
@@ -270,6 +319,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 | **Conversation Memory** | Vector DB storage | Context retention, knowledge base | Low |
 | **Planning Tool** | WBS hierarchy | Project breakdown, task planning | Medium |
 | **WBS Execution Tool** | Task execution | Implementing WBS tasks systematically | Medium |
+| **Slack Tools** | API integration | Team communication, thread analysis | Low |
 | **Recursive Thinking** | Iterative refinement | Deep analysis, verification needed | High |
 | **Sequential Thinking** | Linear progression | Step-by-step planning | Medium |
 | **Tree of Thoughts** | Branching exploration | Comparing multiple options | High |
@@ -283,6 +333,7 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
   - [Recursive Thinking Guide](docs/recursive-thinking.md)
   - [Sequential Thinking Guide](docs/sequential-thinking.md)
   - [Tree of Thoughts Guide](docs/tree-of-thoughts.md)
+  - [Slack Tools Guide](docs/slack-tools.md)
 - **Help**:
   - [Quick Start Guide](docs/quickstart.md)
   - [Troubleshooting Guide](docs/troubleshooting.md)
@@ -290,34 +341,63 @@ Explore multiple solution paths with branching, evaluation, and backtracking.
 
 ## ⚙️ Configuration
 
-This server uses **`config.py`** as the main configuration file - **no `.env` file needed**!
+This server uses **modular configuration system** under `configs/` directory - **no `.env` file needed**!
 
-### Direct Configuration
+### Modular Configuration Structure
 
-Edit `config.py` directly to change settings:
+Each tool category has its own configuration file for better organization:
 
 ```python
+# configs/base.py - Server & common settings
 class ServerConfig:
-    # Server settings
     SERVER_NAME: str = "Thinking Tools MCP Server"
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
-    
-    # Output directories (auto-created)
     OUTPUT_DIR: Path = BASE_DIR / "output"
-    PLANNING_OUTPUT_DIR: Path = OUTPUT_DIR / "planning"
-    CONVERSATION_MEMORY_DB_PATH: str = str(OUTPUT_DIR / "chroma_db")
-    
-    # Planning tool
-    PLANNING_WBS_FILENAME: str = "WBS.md"
-    
-    # Feature flags
-    ENABLE_Rcursive_Thinking_TOOLS: bool = True
-    ENABLE_ST_TOOLS: bool = True
-    ENABLE_TOT_TOOLS: bool = True
-    ENABLE_CONVERSATION_MEMORY_TOOLS: bool = True
-    ENABLE_PLANNING_TOOLS: bool = True
-    ENABLE_WBS_EXECUTION_TOOLS: bool = True
+
+# configs/reasoning.py - Recursive/Sequential/ToT settings
+class ReasoningConfig:
+    ENABLE_RECURSIVE_THINKING: bool = True
+    ENABLE_SEQUENTIAL_THINKING: bool = True
+    ENABLE_TREE_OF_THOUGHTS: bool = True
+    # ... tool-specific settings
+
+# configs/memory.py - Conversation Memory settings
+class MemoryConfig:
+    ENABLE_CONVERSATION_MEMORY: bool = True
+    CHROMA_DB_PATH: str = str(OUTPUT_DIR / "chroma_db")
+    # ... tool-specific settings
+
+# configs/planning.py - Planning & WBS settings
+class PlanningConfig:
+    ENABLE_PLANNING_TOOL: bool = True
+    ENABLE_WBS_EXECUTION: bool = True
+    WBS_FILENAME: str = "WBS.md"
+    # ... tool-specific settings
+
+# configs/slack.py - Slack integration settings (see slack.py.template)
+class SlackConfig:
+    bot_token: str  # From environment variable
+    workspace_domain: str = "your-workspace.slack.com"
+    default_user_id: str = "U00000000"
+    ENABLE_SLACK_TOOLS: bool = True
 ```
+
+**⚠️ Security Note for Slack**: 
+- Use `configs/slack.py.template` as template (commit to Git)
+- Copy to `configs/slack.py` with actual credentials (DO NOT commit)
+- `configs/slack.py` is in `.gitignore` to protect your credentials
+
+### Adding New Tool Configurations
+
+1. Create new config file: `configs/your_tool.py`
+2. Define config class with settings
+3. Import in `configs/__init__.py`
+4. Use in your tool implementation
+
+**Benefits**:
+- 🎯 Easy to locate tool-specific settings
+- 📦 No config file bloat as tools grow
+- 🔧 Independent configuration per tool category
 
 ### Environment Variable Overrides
 
@@ -329,7 +409,7 @@ MCP_LOG_LEVEL=DEBUG python main.py
 
 # Or set in your shell profile
 export MCP_LOG_LEVEL=DEBUG
-export ENABLE_TOT_TOOLS=false
+export ENABLE_TREE_OF_THOUGHTS=false
 ```
 
 ### Output Directory Structure
