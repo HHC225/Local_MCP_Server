@@ -2,7 +2,7 @@
 Tree of Thoughts Tool Wrapper for MCP Registration
 """
 from fastmcp import Context
-from tools.reasoning.tree_of_thoughts_tool import TreeOfThoughtsTool
+from src.tools.reasoning.tree_of_thoughts_tool import TreeOfThoughtsTool
 
 # Initialize tool instance
 _tot_tool = TreeOfThoughtsTool()

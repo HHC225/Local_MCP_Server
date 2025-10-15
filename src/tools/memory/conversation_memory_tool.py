@@ -115,7 +115,24 @@ class ConversationMemoryTool(ReasoningTool):
                 meta["speaker"] = speaker
             
             if metadata:
-                meta.update(metadata)
+                # Convert metadata values to ChromaDB-compatible types
+                # ChromaDB only accepts: str, int, float, bool, or None
+                sanitized_metadata = {}
+                for key, value in metadata.items():
+                    if isinstance(value, (list, tuple)):
+                        # Convert lists/tuples to comma-separated strings
+                        sanitized_metadata[key] = ", ".join(str(v) for v in value)
+                    elif isinstance(value, dict):
+                        # Convert dicts to JSON strings
+                        sanitized_metadata[key] = json.dumps(value)
+                    elif isinstance(value, (str, int, float, bool)) or value is None:
+                        # Keep primitive types as-is
+                        sanitized_metadata[key] = value
+                    else:
+                        # Convert other types to strings
+                        sanitized_metadata[key] = str(value)
+                
+                meta.update(sanitized_metadata)
             
             # Store in ChromaDB with automatic embedding
             self.collection.add(
