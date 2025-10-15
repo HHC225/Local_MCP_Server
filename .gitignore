@@ -34,6 +34,9 @@ venv.bak/
 .env.local
 .env.*.local
 
+# Slack Configuration (contains actual credentials)
+configs/slack.py
+
 # IDE
 .vscode/
 .idea/
@@ -115,3 +118,5 @@ settings.local.py
 *.tmp
 *.temp
 .cache/
+
+bk/

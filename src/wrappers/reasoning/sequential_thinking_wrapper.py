@@ -2,7 +2,7 @@
 Sequential Thinking Tool Wrapper for MCP Registration
 """
 from fastmcp import Context
-from tools.reasoning.sequential_thinking_tool import SequentialThinkingTool
+from src.tools.reasoning.sequential_thinking_tool import SequentialThinkingTool
 
 # Initialize tool instance
 _st_tool = SequentialThinkingTool()

@@ -2,12 +2,12 @@
 WBS Execution Tool Wrapper for MCP Registration
 """
 from fastmcp import Context
-from tools.planning.wbs_execution_tool import WBSExecutionTool
-from config import ServerConfig
+from src.tools.planning.wbs_execution_tool import WBSExecutionTool
+from configs.planning import PlanningConfig
 from typing import Optional
 
 # Initialize tool instance with configured output directory
-_wbs_execution_tool = WBSExecutionTool(default_output_dir=ServerConfig.PLANNING_OUTPUT_DIR)
+_wbs_execution_tool = WBSExecutionTool(default_output_dir=PlanningConfig.PLANNING_OUTPUT_DIR)
 
 
 async def wbs_execution(

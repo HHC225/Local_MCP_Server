@@ -3,7 +3,7 @@ Recursive Thinking Tool Wrappers for MCP Registration
 These wrapper functions contain the tool descriptions and delegate to the actual tool classes.
 """
 from fastmcp import Context
-from tools.reasoning.recursive_thinking_tool import (
+from src.tools.reasoning.recursive_thinking_tool import (
     Rcursive_ThinkingInitializeTool,
     Rcursive_ThinkingUpdateLatentTool,
     Rcursive_ThinkingUpdateAnswerTool,
