@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-15
+
+### Added
+- **WBS Execution Tool** - Systematic task-by-task execution for WBS-based projects
+  - Parse WBS markdown files and extract hierarchical tasks
+  - Execute tasks step-by-step with deep thinking analysis
+  - Real-time checkbox updates in WBS files after task completion
+  - Automatic dependency resolution and validation
+  - Session management for resumable execution
+  - Progress tracking with completion statistics
+  - Error prevention through strict validation
+  - Complex task detection with Sequential Thinking integration
+  - Parent task auto-completion when all children complete
+  
+### Features
+- **Actions**: start, continue, execute_task, get_status, list_sessions
+- **Dependency Management**: Enforces proper execution order
+- **Error Handling**: Validates prerequisites before execution
+- **File Updates**: Real-time WBS file checkbox synchronization
+- **Session Persistence**: In-memory sessions with full state tracking
+
+### Technical Details
+- Implementation: `tools/planning/wbs_execution_tool.py`
+- Wrapper: `wrappers/planning/wbs_execution_wrapper.py`
+- Feature flag: `ENABLE_WBS_EXECUTION_TOOLS` in config.py
+- Follows Planning Tool directory structure
+- Compatible with Planning Tool WBS output format
+
+### Documentation
+- Added comprehensive [WBS Execution Guide](docs/wbs-execution.md)
+- Updated README with tool comparison and examples
+- Added API reference and troubleshooting section
+
+## [1.2.0] - 2025-10-15
+
+### Changed
+- **Configuration System Refactoring**
+  - Removed `.env` file dependency - `config.py` is now the main configuration file
+  - Direct configuration in `config.py` with environment variable override support
+  - Cleaner, more maintainable configuration approach
+
+### Added
+- **Centralized Output Directory Management**
+  - New `output/` directory for all tool-generated files
+  - `output/chroma_db/` - ChromaDB conversation memory storage
+  - `output/planning/` - Planning tool WBS files
+  - Auto-creation of output directories on startup
+- **Planning Tool Configuration**
+  - `PLANNING_OUTPUT_DIR` - configurable planning output directory
+  - `PLANNING_WBS_FILENAME` - customizable WBS filename
+  - Default WBS files now saved to `output/planning/`
+
+### Fixed
+- ChromaDB path now uses centralized config
+- Planning tool WBS export now uses centralized output directory
+- Removed hardcoded paths from tool implementations
+
+### Technical Details
+- `ServerConfig.ensure_output_directories()` - auto-creates all output paths
+- `Path` objects used for cross-platform path handling
+- Backward compatible: environment variables still work for overrides
+- Migrated existing `chroma_db/` data to `output/chroma_db/`
+
+### Documentation
+- Updated README with new configuration section
+- Marked `.env.example` as deprecated
+- Added output directory structure documentation
+
 ## [1.1.0] - 2025-10-14
 
 ### Added
