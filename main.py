@@ -8,11 +8,12 @@ This server provides:
 - Tree of Thoughts: Multi-path exploration and evaluation
 - Conversation Memory: Long-term memory and context retention
 - Planning & WBS: Project planning and work breakdown structure
+- Report Generator: IT report generation from raw content
 
 All tools are registered here with modular configuration.
 """
 from fastmcp import FastMCP, Context
-from configs import ServerConfig, ReasoningConfig, MemoryConfig, PlanningConfig
+from configs import ServerConfig, ReasoningConfig, MemoryConfig, PlanningConfig, ReportConfig
 from src.utils.logger import get_logger
 
 # Initialize logger
@@ -171,6 +172,25 @@ try:
 except Exception as e:
     logger.warning(f"Slack tools not available: {e}")
     logger.info("Continuing without Slack tools...")
+
+
+# ============================================================================
+# REPORT GENERATOR TOOLS REGISTRATION
+# ============================================================================
+
+if ReportConfig.ENABLE_REPORT_GENERATOR:
+    from src.wrappers.report import (
+        generate_report,
+        build_report_from_json
+    )
+    
+    logger.info("Registering Report Generator tools...")
+    
+    # Register wrapper functions as MCP tools
+    mcp.tool()(generate_report)
+    mcp.tool()(build_report_from_json)
+    
+    logger.info("Report Generator tools registered successfully")
 
 
 # ============================================================================
