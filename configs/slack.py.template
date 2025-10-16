@@ -1,0 +1,83 @@
+"""
+Slack Configuration Template
+Copy this file to slack.py and fill in your actual values
+
+SETUP INSTRUCTIONS:
+1. cp configs/slack.py.template configs/slack.py
+2. Edit slack.py with your actual workspace credentials
+3. Never commit slack.py to Git (it's in .gitignore)
+"""
+import os
+from typing import Optional
+from dataclasses import dataclass
+
+
+@dataclass
+class SlackConfig:
+    """Slack API Configuration"""
+    bot_token: str
+    user_token: Optional[str] = None
+    base_url: str = "https://slack.com/api"
+    timeout: int = 30  # 30 seconds
+    retry_attempts: int = 3
+    workspace_domain: str = "your-workspace.slack.com"  # Replace with your workspace
+    default_user_id: str = "U00000000"  # Replace with your default user ID
+    
+    # Feature flags
+    ENABLE_SLACK_TOOLS: bool = True
+
+
+def get_slack_config() -> SlackConfig:
+    """
+    Get Slack configuration from environment variables
+    
+    Environment Variables:
+        SLACK_BOT_TOKEN: Bot token (required, starts with xoxb-)
+        SLACK_USER_TOKEN: User token (optional, starts with xoxp-)
+        SLACK_WORKSPACE_DOMAIN: Your workspace domain
+        SLACK_DEFAULT_USER_ID: Default user ID for ephemeral messages
+    
+    Returns:
+        SlackConfig: Slack configuration object
+        
+    Raises:
+        ValueError: If SLACK_BOT_TOKEN is not set or invalid
+    """
+    bot_token = os.getenv('SLACK_BOT_TOKEN')
+    
+    if not bot_token:
+        raise ValueError(
+            "SLACK_BOT_TOKEN environment variable is not set.\n"
+            "Set it with: export SLACK_BOT_TOKEN='xoxb-your-token-here'"
+        )
+    
+    if not bot_token.startswith('xoxb-'):
+        raise ValueError(
+            "Invalid Slack bot token. Must start with 'xoxb-'"
+        )
+    
+    user_token = os.getenv('SLACK_USER_TOKEN')
+    workspace_domain = os.getenv('SLACK_WORKSPACE_DOMAIN', 'your-workspace.slack.com')
+    default_user_id = os.getenv('SLACK_DEFAULT_USER_ID', 'U00000000')
+    
+    return SlackConfig(
+        bot_token=bot_token,
+        user_token=user_token,
+        workspace_domain=workspace_domain,
+        default_user_id=default_user_id
+    )
+
+
+def validate_slack_config(config: SlackConfig) -> bool:
+    """
+    Validate Slack configuration
+    
+    Args:
+        config: SlackConfig object to validate
+        
+    Returns:
+        bool: True if configuration is valid
+    """
+    if not config.bot_token or not config.bot_token.startswith('xoxb-'):
+        return False
+    return True
