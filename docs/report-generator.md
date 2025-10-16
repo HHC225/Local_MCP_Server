@@ -49,13 +49,15 @@ Convert meeting discussions into actionable reports:
 
 ### Basic Workflow
 
-The Report Generator uses a **two-step process**:
+The Report Generator uses a **semi-automated process**:
 
-1. **Generate Report Structure**: Call `generate_report` with raw content
-2. **Build HTML Report**: Call `build_report_from_json` with structured JSON
+1. **Call `generate_report`**: Provide raw content to analyze
+2. **LLM generates JSON**: Following the fixed schema (strategic_summary, key_findings, metadata)
+3. **Auto-build HTML**: LLM automatically calls `build_report_from_json` with the generated JSON
 
 ```
-Raw Content → generate_report → JSON Structure → build_report_from_json → HTML Report
+Raw Content → generate_report → LLM analyzes → JSON Structure → build_report_from_json → HTML Report
+                                    (automatic)
 ```
 
 ### Step 1: Generate Report
@@ -86,7 +88,7 @@ After calling `generate_report`, the LLM must respond with a JSON object followi
 {
   "report_title": "Clear, concise title summarizing the event",
   "report_type": "Type of report (e.g., Incident Analysis, Security Alert, System Outage Postmortem)",
-  "severity": "Low | Medium | High | Critical",
+  "severity": "low | medium | high | critical",
   "strategic_summary": {
     "overview": "A 2-3 sentence executive summary. What happened and what is the current state?",
     "key_takeaways": [
@@ -113,11 +115,11 @@ After calling `generate_report`, the LLM must respond with a JSON object followi
 }
 ```
 
-### Step 3: Build HTML Report
+**Note**: The LLM automatically calls `build_report_from_json` after generating this JSON.
 
-Call `build_report_from_json` with the structured JSON:
+### Step 3: HTML Report Auto-Generated
 
-**Input**: The complete JSON object from Step 2
+After you provide the structured JSON, the `build_report_from_json` tool is automatically called to generate the HTML report.
 
 **Output**:
 ```json
@@ -149,57 +151,33 @@ Type of report being generated.
 - `"System Outage Postmortem"`
 
 #### `severity` (string)
-Impact level: `"low"`, `"medium"`, `"high"`, or `"critical"`
+Impact level: `"low"`, `"medium"`, `"high"`, or `"critical"` (all lowercase)
 
 **Guidelines**:
-- **Critical**: Major financial loss, data breach, complete service outage
-- **High**: Significant user-facing disruption, core business function impaired
-- **Medium**: Internal system issues, moderate user inconvenience
-- **Low**: Cosmetic issues, isolated problems
+- **critical**: Major financial loss, data breach, complete service outage
+- **high**: Significant user-facing disruption, core business function impaired
+- **medium**: Internal system issues, moderate user inconvenience
+- **low**: Cosmetic issues, isolated problems
 
-#### `summary` (object)
-Executive summary with three sub-fields:
+#### `strategic_summary` (object)
+Executive-focused summary with four sub-fields:
 
-- `overview` (string): 2-3 sentence summary of the situation
-- `impact` (string): Business/user impact description
-- `status` (string): Current status (e.g., "open", "in-progress", "resolved")
+- `overview` (string): 2-3 sentence executive summary of what happened and current state
+- `key_takeaways` (array of strings): 2-3 most important findings for leadership
+- `business_implications` (string): Impact on business (revenue, trust, operations)
+- `next_steps_summary` (string): High-level summary of next actions (not a task list)
 
-#### `details` (object)
-Detailed information with four sub-fields:
+#### `key_findings` (object)
+Detailed findings with three sub-fields:
 
-- `background` (string): Detailed context and background
-- `timeline` (string): Chronological timeline of events
-- `technical_details` (string): Technical information, error messages, logs
-- `affected_components` (string): Systems, services, or components affected
-
-#### `analysis` (object)
-Analysis section with three sub-fields:
-
-- `root_cause` (string): Root cause analysis or hypothesis
-- `contributing_factors` (string): Contributing factors or related issues
-- `risk_assessment` (string): Risk evaluation and potential consequences
-
-#### `action_items` (array of objects)
-List of actionable tasks. Each item has:
-
-- `action` (string): Specific action to be taken
-- `priority` (string): `"low"`, `"medium"`, `"high"`, or `"critical"`
-- `assignee` (string): Suggested assignee or team
-- `deadline` (string): Suggested timeframe or deadline
-
-#### `recommendations` (array of objects)
-List of recommendations. Each item has:
-
-- `recommendation` (string): Specific recommendation
-- `rationale` (string): Why this recommendation is important
-- `effort` (string): `"low"`, `"medium"`, or `"high"`
+- `root_cause` (string): Root cause analysis or leading hypothesis
+- `key_events` (array of strings): Chronological list of significant events
+- `affected_systems` (array of strings): Impacted systems, services, or user groups
 
 #### `metadata` (object)
-Report metadata with four sub-fields:
+Report metadata with two sub-fields:
 
-- `source` (string): Where the information came from
-- `reporter` (string): Who reported or initiated this
-- `reported_date` (string): When reported (ISO 8601 format preferred)
+- `reported_date` (string): When reported or detected (ISO 8601 format preferred)
 - `tags` (array of strings): Categorization tags
 
 ## 🎨 Report Output
@@ -219,12 +197,9 @@ Generated reports include:
 ### Report Sections
 
 1. **Header**: Title, severity badge, report type
-2. **Executive Summary**: Overview, impact, status
-3. **Details**: Background, timeline, technical details, affected components
-4. **Analysis**: Root cause, contributing factors, risk assessment
-5. **Action Items**: Prioritized tasks with assignees and deadlines
-6. **Recommendations**: Suggestions with rationale and effort
-7. **Metadata**: Source, reporter, date, tags
+2. **Strategic Summary**: Overview, key takeaways, business implications, next steps
+3. **Key Findings**: Root cause, key events timeline, affected systems
+4. **Metadata**: Reported date, categorization tags
 
 ### File Location
 
@@ -243,10 +218,10 @@ Reports are saved to: `output/reports/{report_type}_{timestamp}.html`
 
 ### Writing Guidelines
 
-1. **Executive Summary**: Make it understandable by non-technical leaders in 30 seconds
-2. **Timeline**: Use chronological order with timestamps when available
-3. **Technical Details**: Include enough detail for technical staff to understand
-4. **Action Items**: Be specific about what needs to be done and by whom
+1. **Strategic Summary**: Make it understandable by non-technical leaders in 30 seconds
+2. **Key Takeaways**: Focus on business impact and critical insights (2-3 items max)
+3. **Key Events**: Use chronological order with timestamps when available
+4. **Root Cause**: Explain in simple terms that non-technical stakeholders can understand
 
 ### Common Pitfalls
 
@@ -254,13 +229,15 @@ Reports are saved to: `output/reports/{report_type}_{timestamp}.html`
 - Use vague language ("might be", "could be")
 - Miss required JSON fields
 - Over-inflate or under-assess severity
-- Create action items without clear owners
+- Write overly technical summaries for executives
+- Include too many key takeaways (keep to 2-3)
 
 ✅ **Do**:
 - Use concrete, specific language
 - Fill all required JSON fields
 - Assess severity based on business impact
-- Assign clear ownership to action items
+- Write strategic summaries for C-level understanding
+- Focus on business implications and outcomes
 
 ## 🔧 Configuration
 
@@ -319,7 +296,12 @@ export REPORT_VALIDATE_JSON=false
 }
 ```
 
-**Generated Report**: Incident analysis with timeline, impact assessment, and action items for postmortem.
+**Generated Report**: Incident analysis with:
+- Strategic summary focused on business impact (35 minutes of payment downtime)
+- Key events timeline (10:45 alert, 11:00 root cause identified, 11:20 resolved)
+- Root cause: Redis cache expiration without graceful degradation
+- Affected systems: Payment service, checkout flow
+- Next steps: Full postmortem scheduled
 
 ### Example 2: JIRA Bug Report
 
@@ -334,7 +316,12 @@ export REPORT_VALIDATE_JSON=false
 }
 ```
 
-**Generated Report**: Bug analysis with reproduction steps, affected systems, and fix recommendations.
+**Generated Report**: Bug analysis with:
+- Strategic summary highlighting user experience impact
+- Root cause: File size limit configuration (5MB cap)
+- Key events: Bug discovery, user impact assessment
+- Affected systems: File upload service, all user types
+- Business implications: User frustration, potential data loss
 
 ### Example 3: Investigation Results
 
@@ -349,7 +336,12 @@ export REPORT_VALIDATE_JSON=false
 }
 ```
 
-**Generated Report**: Security analysis with findings, risk assessment, and prioritized remediation steps.
+**Generated Report**: Security analysis with:
+- Critical severity assessment due to exposed credentials
+- Strategic summary of security risks and business exposure
+- Key findings: 3 exposed API keys, missing rate limiting, vulnerable dependencies
+- Business implications: Potential data breach, API abuse risk
+- Affected systems: Authentication service, public APIs, third-party integrations
 
 ## 🛠️ Troubleshooting
 
@@ -359,8 +351,9 @@ export REPORT_VALIDATE_JSON=false
 
 **Solution**: Ensure your JSON includes all required fields:
 - `report_title`, `report_type`, `severity`
-- `summary`, `details`, `analysis`
-- `action_items`, `recommendations`, `metadata`
+- `strategic_summary` (with `overview`, `key_takeaways`, `business_implications`, `next_steps_summary`)
+- `key_findings` (with `root_cause`, `key_events`, `affected_systems`)
+- `metadata` (with `reported_date`, `tags`)
 
 ### Issue: "Content length exceeds maximum"
 
