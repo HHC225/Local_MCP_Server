@@ -252,7 +252,7 @@ class VibeCodingTool(BaseTool):
                 'session_id': session_id,
                 'total_stages': '<LLM determines this>',
                 'question': '<LLM creates first question>',
-                'suggestions': '<LLM generates 3 options>'
+                'suggestions': '<LLM generates more than 3 options>'
             },
             'original_prompt': initial_prompt
         }

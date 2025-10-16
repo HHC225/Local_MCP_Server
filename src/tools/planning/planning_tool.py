@@ -332,6 +332,7 @@ class PlanningTool(ReasoningTool):
         next_step_needed: bool,
         problem_statement: Optional[str] = None,
         project_name: Optional[str] = None,
+        session_id: Optional[str] = None,
         wbs_items: Optional[List[Dict[str, Any]]] = None,
         refine_wbs: Optional[bool] = False,
         is_revision: Optional[bool] = None,
@@ -375,11 +376,18 @@ class PlanningTool(ReasoningTool):
             validated_input = self._validate_input(data)
             
             # Get or create session
-            session_id = self._get_or_create_default_session(
-                validated_input.get('problemStatement'),
-                validated_input.get('projectName')
-            )
-            session = planning_sessions[session_id]
+            # If session_id is provided, use existing session; otherwise create new one
+            if session_id and session_id in planning_sessions:
+                # Use existing session
+                current_session_id = session_id
+                session = planning_sessions[session_id]
+            else:
+                # Create new session
+                current_session_id = self._get_or_create_default_session(
+                    validated_input.get('problemStatement'),
+                    validated_input.get('projectName')
+                )
+                session = planning_sessions[current_session_id]
             
             # Create planning step
             planning_step_obj = {
@@ -460,7 +468,7 @@ class PlanningTool(ReasoningTool):
             
             # Prepare response
             result = {
-                'sessionId': session['id'],
+                'sessionId': current_session_id,
                 'projectName': session['projectName'],
                 'stepNumber': validated_input['stepNumber'],
                 'totalSteps': validated_input['totalSteps'],
