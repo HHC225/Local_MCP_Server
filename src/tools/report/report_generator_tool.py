@@ -98,7 +98,7 @@ Analyze the above content and generate a comprehensive IT report following the E
 - strategic_summary must include: overview, key_takeaways, business_implications, next_steps_summary
 - key_findings must include: root_cause, key_events, affected_systems
 
-After you return the JSON, it will be automatically validated and converted to a professional HTML report.
+After you return the JSON, You must call build_report_from_json tool and create HTML report.
 
 🚀 Generate the JSON now:"""
             
