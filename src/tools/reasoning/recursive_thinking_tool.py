@@ -83,7 +83,7 @@ class Rcursive_ThinkingUpdateLatentTool(ReasoningTool):
         """Update latent reasoning state"""
         
         if session_id not in reasoning_sessions:
-            return json.dumps({"error": "Session not found. Call initialize_reasoning first."})
+            return json.dumps({"error": "Session not found. Call initialize_reasoning first."}, ensure_ascii=False)
         
         session = reasoning_sessions[session_id]
         
@@ -179,7 +179,7 @@ class Rcursive_ThinkingUpdateAnswerTool(ReasoningTool):
         """Update answer based on latent reasoning"""
         
         if session_id not in reasoning_sessions:
-            return json.dumps({"error": "Session not found. Call initialize_reasoning first."})
+            return json.dumps({"error": "Session not found. Call initialize_reasoning first."}, ensure_ascii=False)
         
         session = reasoning_sessions[session_id]
         
@@ -270,7 +270,7 @@ class Rcursive_ThinkingGetResultTool(ReasoningTool):
         """Retrieve final result"""
         
         if session_id not in reasoning_sessions:
-            return json.dumps({"error": "Session not found."})
+            return json.dumps({"error": "Session not found."}, ensure_ascii=False)
         
         session = reasoning_sessions[session_id]
         
@@ -351,6 +351,7 @@ class Rcursive_ThinkingResetTool(ReasoningTool):
         if session_id in reasoning_sessions:
             del reasoning_sessions[session_id]
             await self.log_execution(ctx, f"Reset session {session_id}")
-            return json.dumps({"status": "reset", "session_id": session_id})
+            return json.dumps({"status": "reset", "session_id": session_id}, ensure_ascii=False)
         else:
-            return json.dumps({"error": "Session not found."})
+            return json.dumps({"error": "Session not found."}, ensure_ascii=False)
+

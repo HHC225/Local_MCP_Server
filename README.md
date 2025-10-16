@@ -16,6 +16,7 @@ Local_MCP_Server/
 │   ├── memory.py         # Conversation Memory tool config
 │   ├── planning.py       # Planning & WBS tool configs
 │   ├── report.py         # Report Generator tool config
+│   ├── vibe.py           # Vibe Coding tool config
 │   ├── slack.py          # Slack tools config (DO NOT commit)
 │   └── slack.py.template # Slack config template (commit this)
 │
@@ -38,12 +39,14 @@ Local_MCP_Server/
 │   │   │       ├── report_template.html
 │   │   │       ├── report_styles.css
 │   │   │       └── report_script.js
-│   │   └── slack/        # Slack integration tools
-│   │       ├── get_thread_content_tool.py
-│   │       ├── get_single_message_tool.py
-│   │       ├── post_message_tool.py
-│   │       ├── post_ephemeral_tool.py
-│   │       └── delete_message_tool.py
+│   │   ├── slack/        # Slack integration tools
+│   │   │   ├── get_thread_content_tool.py
+│   │   │   ├── get_single_message_tool.py
+│   │   │   ├── post_message_tool.py
+│   │   │   ├── post_ephemeral_tool.py
+│   │   │   └── delete_message_tool.py
+│   │   └── vibe/         # Vibe Coding tool
+│   │       └── vibe_coding_tool.py
 │   │
 │   ├── wrappers/         # MCP registration wrappers
 │   │   ├── memory/       # Memory tool wrappers
@@ -58,12 +61,14 @@ Local_MCP_Server/
 │   │   ├── report/       # Report generation wrappers
 │   │   │   ├── report_generator_wrapper.py
 │   │   │   └── html_builder_wrapper.py
-│   │   └── slack/        # Slack tool wrappers
-│   │       ├── get_thread_content_wrapper.py
-│   │       ├── get_single_message_wrapper.py
-│   │       ├── post_message_wrapper.py
-│   │       ├── post_ephemeral_wrapper.py
-│   │       └── delete_message_wrapper.py
+│   │   ├── slack/        # Slack tool wrappers
+│   │   │   ├── get_thread_content_wrapper.py
+│   │   │   ├── get_single_message_wrapper.py
+│   │   │   ├── post_message_wrapper.py
+│   │   │   ├── post_ephemeral_wrapper.py
+│   │   │   └── delete_message_wrapper.py
+│   │   └── vibe/         # Vibe Coding wrapper
+│   │       └── vibe_coding_wrapper.py
 │   │
 │   └── utils/            # Utilities
 │       └── logger.py     # Logging configuration
@@ -131,6 +136,8 @@ INFO: Registering Tree of Thoughts tools...
 INFO: Registering Conversation Memory tools...
 INFO: Registering Planning tool...
 INFO: Registering WBS Execution tool...
+INFO: Registering Slack tools...
+INFO: Registering Vibe Coding tool...
 INFO: Registering Report Generator tools...
 ```
 
@@ -306,6 +313,47 @@ Systematic task-by-task execution tool for WBS-based project implementation with
 
 [📖 Full Documentation →](docs/wbs-execution.md)
 
+### [Vibe Coding](docs/vibe-coding.md)
+
+Interactive prompt refinement with **automatic stage planning** and **loop-based execution** - prevents AI from making assumptions by forcing explicit user choices through structured stages.
+
+**Best for**: Refining vague requirements, exploring implementation options, structured decision-making with progress tracking
+
+**Quick Example**:
+```
+1. User: "I want to build an API"
+2. AI analyzes → Determines 5 stages needed
+3. Stage 1/5: What type? [REST, GraphQL, gRPC]
+4. Stage 2/5: Authentication? [JWT, OAuth, API Key]
+5. Loop continues through all 5 stages
+6. Get refined specification + additional features suggestion
+7. User adds feature → Extends to 8 stages (same session!)
+```
+
+**Key Features**:
+- **🎯 Stage Planning**: AI analyzes complexity and determines total stages upfront
+- **🔄 Auto-Loop Execution**: Continues automatically through all planned stages
+- **📊 Progress Tracking**: Shows stage X/Y and percentage progress
+- **🌟 Feature Extension**: Add features without session restart
+- **💾 Context Preservation**: All previous decisions maintained
+- **📝 Always Suggest More**: Completed sessions always include feature suggestions
+
+**Improved Workflow**:
+1. **Analysis Phase**: AI determines how many stages needed (e.g., 5 stages)
+2. **Loop Execution**: Automatically continues through stages 1→5
+3. **Completion**: Shows refined prompt + suggests additional features
+4. **Extension**: User adds feature → AI extends to stage 6-8 (no restart!)
+
+**Use Cases**:
+- Clarifying vague project requirements with stage planning
+- Exploring architecture alternatives systematically
+- Making informed technology stack decisions
+- Building detailed specifications from ideas
+- Adding features to existing specifications
+- Structured requirement gathering with progress visibility
+
+[📖 Full Documentation →](docs/vibe-coding.md)
+
 
 ### Report Generator
 
@@ -365,6 +413,7 @@ Integrate with Slack to retrieve threads, post messages, and manage communicatio
 | **Conversation Memory** | Vector DB storage | Context retention, knowledge base | Low |
 | **Planning Tool** | WBS hierarchy | Project breakdown, task planning | Medium |
 | **WBS Execution Tool** | Task execution | Implementing WBS tasks systematically | Medium |
+| **Vibe Coding** | Interactive refinement | Clarifying vague requirements | Low |
 | **Report Generator** | JSON to HTML | IT reports, incident analysis | Low |
 | **Slack Tools** | API integration | Team communication, thread analysis | Low |
 | **Recursive Thinking** | Iterative refinement | Deep analysis, verification needed | High |
@@ -377,6 +426,7 @@ Integrate with Slack to retrieve threads, post messages, and manage communicatio
   - [Conversation Memory Guide](docs/conversation-memory.md)
   - [Planning Tool Guide](docs/planning.md)
   - [WBS Execution Tool Guide](docs/wbs-execution.md)
+  - [Vibe Coding Guide](docs/vibe-coding.md)
   - [Recursive Thinking Guide](docs/recursive-thinking.md)
   - [Sequential Thinking Guide](docs/sequential-thinking.md)
   - [Tree of Thoughts Guide](docs/tree-of-thoughts.md)
@@ -420,6 +470,13 @@ class PlanningConfig:
     ENABLE_PLANNING_TOOL: bool = True
     ENABLE_WBS_EXECUTION: bool = True
     WBS_FILENAME: str = "WBS.md"
+    # ... tool-specific settings
+
+# configs/vibe.py - Vibe Coding settings
+class VibeConfig:
+    ENABLE_VIBE_CODING: bool = True
+    MAX_REFINEMENT_STAGES: int = 10
+    NUM_SUGGESTIONS: int = 3
     # ... tool-specific settings
 
 # configs/report.py - Report Generator settings

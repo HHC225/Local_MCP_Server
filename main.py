@@ -175,6 +175,32 @@ except Exception as e:
 
 
 # ============================================================================
+# VIBE CODING TOOL REGISTRATION
+# ============================================================================
+
+try:
+    from configs.vibe import VibeConfig, get_vibe_config
+    
+    # Check if Vibe Coding is enabled
+    vibe_config = get_vibe_config()
+    if vibe_config.ENABLE_VIBE_CODING:
+        from src.wrappers.vibe.vibe_coding_wrapper import vibe_coding
+        
+        logger.info("Registering Vibe Coding tool...")
+        
+        # Register wrapper function as MCP tool
+        mcp.tool()(vibe_coding)
+        
+        logger.info("Vibe Coding tool registered successfully")
+    else:
+        logger.info("Vibe Coding tool disabled in configuration")
+        
+except Exception as e:
+    logger.warning(f"Vibe Coding tool not available: {e}")
+    logger.info("Continuing without Vibe Coding tool...")
+
+
+# ============================================================================
 # REPORT GENERATOR TOOLS REGISTRATION
 # ============================================================================
 

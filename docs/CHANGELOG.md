@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-10-16
+
+### Added
+- **Vibe Coding Tool** - Interactive prompt refinement through clarifying questions
+  - Prevents AI from making assumptions about vague requirements
+  - Provides exactly 3 specific alternatives at each decision point
+  - Interactive loop that waits for explicit user selection
+  - Session management to maintain conversation context
+  - Progressive refinement until prompt is fully concrete
+  
+### Features
+- **Actions**: start, respond, get_status, list_sessions, finalize
+- **3 Alternatives Rule**: Always provides exactly 3 specific suggestions
+- **No Assumptions**: Forces explicit user choices instead of AI guessing
+- **Session Persistence**: In-memory sessions with full conversation history
+- **Status Flow**: refinement_needed → awaiting_response → completed
+
+### Technical Details
+- Implementation: `src/tools/vibe/vibe_coding_tool.py`
+- Wrapper: `src/wrappers/vibe/vibe_coding_wrapper.py`
+- Configuration: `configs/vibe.py`
+- Feature flag: `ENABLE_VIBE_CODING` in configs/vibe.py
+- Global session store: `vc_sessions` dictionary
+
+### Configuration Options
+- `ENABLE_VIBE_CODING`: Enable/disable tool (default: true)
+- `MAX_REFINEMENT_STAGES`: Maximum refinement cycles (default: 10)
+- `NUM_SUGGESTIONS`: Number of alternatives to provide (default: 3)
+- `SESSION_TIMEOUT`: Session timeout in seconds (default: 3600)
+
+### Documentation
+- Added comprehensive [Vibe Coding Guide](docs/vibe-coding.md)
+- Updated README with Vibe Coding section and examples
+- Added to tool comparison table
+- Includes AI usage patterns and best practices
+
+### Use Cases
+- Refining vague project requirements into concrete specifications
+- Exploring architecture alternatives systematically
+- Making informed technology stack decisions
+- Building detailed specifications from high-level ideas
+- Structured requirement gathering with stakeholders
+
 ## [1.3.0] - 2025-10-15
 
 ### Added

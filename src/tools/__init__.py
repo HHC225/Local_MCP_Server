@@ -11,6 +11,7 @@ from .reasoning.recursive_thinking_tool import (
 from .reasoning.sequential_thinking_tool import SequentialThinkingTool
 from .reasoning.tree_of_thoughts_tool import TreeOfThoughtsTool
 from .memory.conversation_memory_tool import ConversationMemoryTool
+from .vibe.vibe_coding_tool import VibeCodingTool
 
 __all__ = [
     'Rcursive_ThinkingInitializeTool',
@@ -20,5 +21,6 @@ __all__ = [
     'Rcursive_ThinkingResetTool',
     'SequentialThinkingTool',
     'TreeOfThoughtsTool',
-    'ConversationMemoryTool'
+    'ConversationMemoryTool',
+    'VibeCodingTool'
 ]
