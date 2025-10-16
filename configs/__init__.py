@@ -7,6 +7,7 @@ from .reasoning import ReasoningConfig
 from .memory import MemoryConfig
 from .planning import PlanningConfig
 from .slack import SlackConfig, get_slack_config
+from .report import ReportConfig
 
 __all__ = [
     "ServerConfig",
@@ -15,6 +16,7 @@ __all__ = [
     "PlanningConfig",
     "SlackConfig",
     "get_slack_config",
+    "ReportConfig",
 ]
 
 # Validate all configurations on import
@@ -22,3 +24,4 @@ ServerConfig.validate()
 ReasoningConfig.validate()
 MemoryConfig.validate()
 PlanningConfig.validate()
+ReportConfig.validate()

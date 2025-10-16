@@ -15,6 +15,7 @@ Local_MCP_Server/
 │   ├── reasoning.py      # Recursive/Sequential/ToT tool configs
 │   ├── memory.py         # Conversation Memory tool config
 │   ├── planning.py       # Planning & WBS tool configs
+│   ├── report.py         # Report Generator tool config
 │   ├── slack.py          # Slack tools config (DO NOT commit)
 │   └── slack.py.template # Slack config template (commit this)
 │
@@ -30,6 +31,13 @@ Local_MCP_Server/
 │   │   │   ├── recursive_thinking_tool.py
 │   │   │   ├── sequential_thinking_tool.py
 │   │   │   └── tree_of_thoughts_tool.py
+│   │   ├── report/       # Report generation tools
+│   │   │   ├── report_generator_tool.py
+│   │   │   ├── html_builder_tool.py
+│   │   │   └── templates/  # HTML/CSS/JS templates
+│   │   │       ├── report_template.html
+│   │   │       ├── report_styles.css
+│   │   │       └── report_script.js
 │   │   └── slack/        # Slack integration tools
 │   │       ├── get_thread_content_tool.py
 │   │       ├── get_single_message_tool.py
@@ -47,6 +55,9 @@ Local_MCP_Server/
 │   │   │   ├── recursive_thinking_wrappers.py
 │   │   │   ├── sequential_thinking_wrapper.py
 │   │   │   └── tree_of_thoughts_wrapper.py
+│   │   ├── report/       # Report generation wrappers
+│   │   │   ├── report_generator_wrapper.py
+│   │   │   └── html_builder_wrapper.py
 │   │   └── slack/        # Slack tool wrappers
 │   │       ├── get_thread_content_wrapper.py
 │   │       ├── get_single_message_wrapper.py
@@ -59,7 +70,8 @@ Local_MCP_Server/
 │
 ├── output/               # All tool-generated outputs
 │   ├── chroma_db/        # ChromaDB persistent storage
-│   └── planning/         # WBS and planning files
+│   ├── planning/         # WBS and planning files
+│   └── reports/          # Generated HTML reports
 │
 └── docs/                 # Documentation
 ```
@@ -119,6 +131,7 @@ INFO: Registering Tree of Thoughts tools...
 INFO: Registering Conversation Memory tools...
 INFO: Registering Planning tool...
 INFO: Registering WBS Execution tool...
+INFO: Registering Report Generator tools...
 ```
 
 Press `Ctrl+C` to stop.
@@ -243,6 +256,24 @@ Thought N: Final solution
 
 [📖 Full Documentation →](docs/sequential-thinking.md)
 
+### [Tree of Thoughts](docs/tree-of-thoughts.md)
+
+Explore multiple solution paths with branching, evaluation, and backtracking.
+
+**Best for**: Technology stack selection, architecture comparisons, multi-option decisions
+
+**Quick Example**:
+```
+1. Create session with problem
+2. Add multiple solution approaches
+3. Evaluate each with scores
+4. Explore promising paths deeper
+5. Backtrack from dead ends
+6. Select optimal solution
+```
+
+[📖 Full Documentation →](docs/tree-of-thoughts.md)
+
 ### [Planning Tool](docs/planning.md)
 
 Create structured Work Breakdown Structures (WBS) before implementation to prevent common development issues.
@@ -275,23 +306,38 @@ Systematic task-by-task execution tool for WBS-based project implementation with
 
 [📖 Full Documentation →](docs/wbs-execution.md)
 
-### [Tree of Thoughts](docs/tree-of-thoughts.md)
 
-Explore multiple solution paths with branching, evaluation, and backtracking.
+### Report Generator
 
-**Best for**: Technology stack selection, architecture comparisons, multi-option decisions
+Generate comprehensive IT reports from raw content (Slack messages, JIRA tickets, logs, etc.).
+
+**Best for**: Incident reports, investigation summaries, analysis documentation, executive summaries
 
 **Quick Example**:
 ```
-1. Create session with problem
-2. Add multiple solution approaches
-3. Evaluate each with scores
-4. Explore promising paths deeper
-5. Backtrack from dead ends
-6. Select optimal solution
+1. Call generate_report with content
+2. LLM returns structured JSON
+3. Call build_report_from_json
+4. Get professional HTML report
 ```
 
-[📖 Full Documentation →](docs/tree-of-thoughts.md)
+**Features**:
+- Converts raw IT content into professional HTML reports
+- Automatic severity assessment and impact analysis
+- Executive summary with key takeaways
+- Action items and recommendations
+- Glassmorphism UI design with responsive layout
+- Self-contained HTML files with embedded CSS/JS
+
+**Input Types Supported**:
+- Slack messages and threads
+- JIRA tickets and bug reports
+- Investigation results and audit findings
+- Email threads and support tickets
+- Meeting notes and log files
+- System monitoring data
+
+[📖 Full Documentation →](docs/report-generator.md)
 
 ### [Slack Tools](docs/slack-tools.md)
 
@@ -319,6 +365,7 @@ Integrate with Slack to retrieve threads, post messages, and manage communicatio
 | **Conversation Memory** | Vector DB storage | Context retention, knowledge base | Low |
 | **Planning Tool** | WBS hierarchy | Project breakdown, task planning | Medium |
 | **WBS Execution Tool** | Task execution | Implementing WBS tasks systematically | Medium |
+| **Report Generator** | JSON to HTML | IT reports, incident analysis | Low |
 | **Slack Tools** | API integration | Team communication, thread analysis | Low |
 | **Recursive Thinking** | Iterative refinement | Deep analysis, verification needed | High |
 | **Sequential Thinking** | Linear progression | Step-by-step planning | Medium |
@@ -333,6 +380,7 @@ Integrate with Slack to retrieve threads, post messages, and manage communicatio
   - [Recursive Thinking Guide](docs/recursive-thinking.md)
   - [Sequential Thinking Guide](docs/sequential-thinking.md)
   - [Tree of Thoughts Guide](docs/tree-of-thoughts.md)
+  - [Report Generator Guide](docs/report-generator.md)
   - [Slack Tools Guide](docs/slack-tools.md)
 - **Help**:
   - [Quick Start Guide](docs/quickstart.md)
@@ -372,6 +420,13 @@ class PlanningConfig:
     ENABLE_PLANNING_TOOL: bool = True
     ENABLE_WBS_EXECUTION: bool = True
     WBS_FILENAME: str = "WBS.md"
+    # ... tool-specific settings
+
+# configs/report.py - Report Generator settings
+class ReportConfig:
+    ENABLE_REPORT_GENERATOR: bool = True
+    REPORT_OUTPUT_DIR: Path = OUTPUT_DIR / "reports"
+    REPORT_MAX_CONTENT_LENGTH: int = 50000
     # ... tool-specific settings
 
 # configs/slack.py - Slack integration settings (see slack.py.template)
@@ -418,12 +473,13 @@ All tool-generated files are organized under `output/`:
 
 ```
 output/
-├── chroma_db/          # Conversation Memory database
-│   ├── chroma.sqlite3
-│   └── [vector data]
-└── planning/           # Planning tool WBS files
-    ├── Project_Name_WBS.md
-    └── Another_Project_WBS.md
+├── chroma_db/           # Conversation Memory ChromaDB storage
+├── planning/            # Planning tool WBS files
+│   └── execution/       # WBS execution session data
+└── reports/             # Generated HTML reports
+    ├── incident_20251016_143022.html
+    ├── investigation_20251016_150134.html
+    └── ...
 ```
 
 **Note**: The `output/` directory is in `.gitignore` and created automatically on startup.
