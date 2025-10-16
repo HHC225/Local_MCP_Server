@@ -17,6 +17,7 @@ async def planning(
     next_step_needed: bool,
     problem_statement: str = None,
     project_name: str = None,
+    session_id: str = None,
     wbs_items: List[Dict[str, Any]] = None,
     refine_wbs: bool = False,
     is_revision: bool = None,
@@ -85,6 +86,30 @@ async def planning(
     - **PARENT TASKS (Level 0, 1)**: High-level summaries only, NO implementation details
     - **CHILD TASKS (Level 2+)**: Detailed, actionable implementation instructions
     
+    🔗 **WBS ITEM SCHEMA (Required Fields):**
+    Each WBS item MUST include ALL of these fields:
+    ```json
+    {
+      "id": "1.0",                           // ✅ Unique task identifier (e.g., "1.0", "1.1", "1.1.1")
+      "title": "Task Title",                 // ✅ Short descriptive title
+      "description": "Detailed task...",     // ✅ Full description with requirements
+      "level": 0,                            // ✅ Hierarchy level (0=root, 1=child, 2=grandchild, etc.)
+      "completed": false,                    // ✅ Boolean completion status
+      "priority": "high",                    // ✅ Must be: "high", "medium", or "low" (lowercase!)
+      "order": 1,                            // ✅ Sort order within same level
+      "dependencies": ["1.0"],               // ✅ List of dependent task IDs
+      "estimated_duration_weeks": 2,         // ✅ Time estimate
+      "parentId": null                       // ✅ Parent task ID (null for root items)
+    }
+    ```
+    
+    ⚠️ **COMMON MISTAKES:**
+    - Missing `level` field → Will cause validation error
+    - Missing `completed` field → Will cause validation error
+    - Missing `order` field → Will cause validation error
+    - Using "High" instead of "high" for priority → Validation fails
+    - Not including hierarchical structure → Flat list instead of proper WBS
+    
     🔗 **DEPENDENCY SPECIFICATION GUIDELINES:**
     - Use Task IDs, hierarchical numbers, or task titles
     - Separate multiple dependencies with commas
@@ -136,6 +161,7 @@ async def planning(
         next_step_needed: Whether more planning steps are needed (required)
         problem_statement: Initial problem statement to break down (for new sessions)
         project_name: Name for the project/planning session (optional)
+        session_id: Existing session ID to continue planning (optional, if not provided, creates new session)
         wbs_items: WBS items to add in this planning step (optional)
         refine_wbs: Whether to refine existing WBS structure (optional)
         is_revision: Whether this revises a previous planning step (optional)
@@ -159,6 +185,7 @@ async def planning(
         next_step_needed=next_step_needed,
         problem_statement=problem_statement,
         project_name=project_name,
+        session_id=session_id,
         wbs_items=wbs_items,
         refine_wbs=refine_wbs,
         is_revision=is_revision,
