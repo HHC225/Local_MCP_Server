@@ -315,34 +315,37 @@ Systematic task-by-task execution tool for WBS-based project implementation with
 
 ### [Vibe Coding](docs/vibe-coding.md)
 
-Interactive prompt refinement with **automatic stage planning** and **loop-based execution** - prevents AI from making assumptions by forcing explicit user choices through structured stages.
+Interactive prompt refinement through **two-phase workflow**: LLM analyzes complexity, then executes structured refinement stages.
 
-**Best for**: Refining vague requirements, exploring implementation options, structured decision-making with progress tracking
+**Best for**: Clarifying vague requirements, exploring implementation options, structured decision-making with progress tracking
 
 **Quick Example**:
 ```
 1. User: "I want to build an API"
 2. AI analyzes → Determines 5 stages needed
-3. Stage 1/5: What type? [REST, GraphQL, gRPC]
-4. Stage 2/5: Authentication? [JWT, OAuth, API Key]
-5. Loop continues through all 5 stages
-6. Get refined specification + additional features suggestion
-7. User adds feature → Extends to 8 stages (same session!)
+3. AI calls set_total_stages with first question
+4. Stage 1/5 (20%): Architecture? [REST, GraphQL, gRPC]
+5. Stage 2/5 (40%): Authentication? [JWT, OAuth, API Key]
+6. Loop continues through all 5 stages
+7. Get refined specification + feature suggestions
+8. User adds feature → AI extends to 8 stages (same session!)
 ```
 
 **Key Features**:
-- **🎯 Stage Planning**: AI analyzes complexity and determines total stages upfront
-- **🔄 Auto-Loop Execution**: Continues automatically through all planned stages
+- **🔄 Two-Phase Workflow**: Analysis phase (start) → Refinement loop (set_total_stages → respond)
+- **🎯 LLM-Driven Analysis**: AI determines total_stages by analyzing prompt complexity
 - **📊 Progress Tracking**: Shows stage X/Y and percentage progress
 - **🌟 Feature Extension**: Add features without session restart
 - **💾 Context Preservation**: All previous decisions maintained
 - **📝 Always Suggest More**: Completed sessions always include feature suggestions
 
-**Improved Workflow**:
-1. **Analysis Phase**: AI determines how many stages needed (e.g., 5 stages)
-2. **Loop Execution**: Automatically continues through stages 1→5
-3. **Completion**: Shows refined prompt + suggests additional features
-4. **Extension**: User adds feature → AI extends to stage 6-8 (no restart!)
+**Workflow**:
+1. **start**: User provides vague prompt → Tool creates session
+2. **LLM Analysis**: AI analyzes complexity and determines stages
+3. **set_total_stages**: AI sets total stages and begins refinement
+4. **respond Loop**: Continues through all stages with user input
+5. **Completion**: Shows refined prompt + suggests additional features
+6. **add_feature**: User adds feature → AI extends stages (no restart!)
 
 **Use Cases**:
 - Clarifying vague project requirements with stage planning

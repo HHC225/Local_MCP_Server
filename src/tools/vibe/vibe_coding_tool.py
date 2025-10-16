@@ -207,78 +207,57 @@ class VibeCodingTool(BaseTool):
         ctx: Optional[Context] = None
     ) -> str:
         """
-        Handle 'start' action - Initialize new session with stage analysis
+        Handle 'start' action - Initialize new session and analyze prompt complexity
+        
+        This action analyzes the user's initial_prompt and instructs the LLM to:
+        1. Analyze the prompt complexity
+        2. Determine how many refinement stages are needed (total_stages)
+        3. Generate the first clarifying question
+        4. Provide 3 alternative suggestions
+        
+        The LLM should then call this tool again with the 'set_total_stages' action
+        to set the determined total_stages and begin the refinement process.
         
         Args:
-            initial_prompt: User's initial vague prompt
-            total_stages: Total number of stages needed (AI must determine this)
-            suggestions: AI-generated suggestions (optional, AI provides these)
-            question: AI-generated clarifying question (optional)
+            initial_prompt: User's initial vague prompt (required)
+            total_stages: NOT used in start action
+            question: NOT used in start action
+            suggestions: NOT used in start action
             ctx: MCP context
             
         Returns:
-            JSON response with session info
+            JSON response instructing LLM to analyze and determine total_stages
         """
-        # Create new session
-        session_id = self._create_session(initial_prompt, total_stages or 0)
+        # Create session without total_stages (will be set by LLM)
+        session_id = self._create_session(initial_prompt, total_stages=0)
         
-        # If total_stages not provided, request AI to analyze
-        if not total_stages:
-            session = self._get_session(session_id)
-            response = {
-                'success': True,
-                'action': 'start',
+        response = {
+            'success': True,
+            'action': 'start',
+            'session_id': session_id,
+            'status': 'analyzing',
+            'message': '🔍 Session created. Please analyze the prompt and determine total_stages.',
+            'instructions_for_llm': {
+                'step_1': 'Analyze the initial_prompt complexity',
+                'step_2': 'Determine how many refinement stages are needed (total_stages)',
+                'step_3': 'Call vibe_coding again with action="set_total_stages" to begin refinement',
+                'guidance': {
+                    'simple_requests': '3 stages - e.g., basic feature requests',
+                    'medium_complexity': '5 stages - e.g., API development, small applications',
+                    'complex_projects': '7+ stages - e.g., full system architecture, complex integrations'
+                }
+            },
+            'next_action': {
+                'action': 'set_total_stages',
                 'session_id': session_id,
-                'status': 'analyzing',
-                'stage': 0,
-                'message': '🔍 Session created. AI must analyze the prompt and determine total_stages needed.',
-                'original_prompt': initial_prompt,
-                'instructions': 'Please analyze the prompt complexity and call start action again with total_stages parameter.'
-            }
-            
-            await self.log_execution(ctx, f"Started session {session_id} - awaiting stage analysis")
-            return json.dumps(response, indent=2, ensure_ascii=False)
+                'total_stages': '<LLM determines this>',
+                'question': '<LLM creates first question>',
+                'suggestions': '<LLM generates 3 options>'
+            },
+            'original_prompt': initial_prompt
+        }
         
-        # If AI provided total stages, start first refinement stage
-        if suggestions and question:
-            if len(suggestions) != 3:
-                raise ValueError("Exactly 3 suggestions must be provided")
-            
-            self._add_conversation_entry(
-                session_id=session_id,
-                ai_question=question,
-                suggestions=suggestions
-            )
-            self._update_session_status(session_id, 'awaiting_response')
-            
-            session = self._get_session(session_id)
-            
-            response = {
-                'success': True,
-                'action': 'start',
-                'session_id': session_id,
-                'status': 'awaiting_response',
-                'stage': session['current_stage'],
-                'total_stages': session['total_stages'],
-                'progress_percentage': (session['current_stage'] / session['total_stages']) * 100,
-                'message': f'🚀 Vibe Coding started! Stage {session["current_stage"]}/{session["total_stages"]}',
-                'question': question,
-                'suggestions': suggestions
-            }
-        else:
-            session = self._get_session(session_id)
-            response = {
-                'success': True,
-                'action': 'start',
-                'session_id': session_id,
-                'status': 'refinement_needed',
-                'stage': 0,
-                'total_stages': total_stages,
-                'message': f'🚀 Session initialized with {total_stages} stages. Please provide first question and suggestions.',
-                'original_prompt': initial_prompt
-            }
-        
-        await self.log_execution(ctx, f"Started session: {session_id} with {total_stages} stages")
+        await self.log_execution(ctx, f"Started analysis for session: {session_id}")
         
         return json.dumps(response, indent=2, ensure_ascii=False)
     
@@ -298,10 +277,10 @@ class VibeCodingTool(BaseTool):
         Args:
             session_id: Session identifier
             user_response: User's response to previous suggestions
-            next_question: AI's next clarifying question (optional)
-            next_suggestions: AI's next 3 suggestions (optional)
+            next_question: AI's next clarifying question (optional, for continuing)
+            next_suggestions: AI's next 3 suggestions (optional, for continuing)
             is_final: Whether refinement is complete
-            total_stages: Total stages needed (required if session was created without it)
+            total_stages: Not used in respond (only used in start action)
             ctx: MCP context
             
         Returns:
@@ -309,66 +288,7 @@ class VibeCodingTool(BaseTool):
         """
         session = self._get_session(session_id)
         
-        # Special handling: If conversation_history is empty (from stage 0 analyzing state),
-        # treat this as the first actual refinement step
-        if not session['conversation_history']:
-            # User is responding to stage 0 analysis - this is the first actual interaction
-            if not next_question or not next_suggestions:
-                raise ValueError(
-                    "First respond after stage 0 requires next_question and next_suggestions. "
-                    "The session was created in 'analyzing' state without conversation history. "
-                    "Please provide next_question and next_suggestions to start refinement."
-                )
-            
-            # If total_stages is still 0, it must be provided now
-            if session['total_stages'] == 0:
-                if not total_stages:
-                    raise ValueError(
-                        "First respond after stage 0 requires total_stages parameter. "
-                        "The session was created without total_stages (analyzing state). "
-                        "Please provide total_stages to indicate how many refinement stages are needed."
-                    )
-                session['total_stages'] = total_stages
-                session['status'] = 'refinement_needed'
-            
-            # Add the first conversation entry with user's initial choice
-            self._add_conversation_entry(
-                session_id=session_id,
-                ai_question="Initial refinement direction",
-                suggestions=["User's choice from stage 0"],
-                user_response=user_response
-            )
-            
-            # Now add the next question
-            if len(next_suggestions) != 3:
-                raise ValueError("Exactly 3 suggestions must be provided")
-            
-            self._add_conversation_entry(
-                session_id=session_id,
-                ai_question=next_question,
-                suggestions=next_suggestions
-            )
-            self._update_session_status(session_id, 'awaiting_response')
-            
-            progress_percentage = (session['current_stage'] / session['total_stages']) * 100
-            
-            response = {
-                'success': True,
-                'action': 'respond',
-                'session_id': session_id,
-                'status': 'awaiting_response',
-                'stage': session['current_stage'],
-                'total_stages': session['total_stages'],
-                'progress_percentage': progress_percentage,
-                'message': f'💬 Stage {session["current_stage"]}/{session["total_stages"]} - Refinement started.',
-                'question': next_question,
-                'suggestions': next_suggestions
-            }
-            
-            await self.log_execution(ctx, f"Started refinement for session: {session_id}")
-            return json.dumps(response, indent=2, ensure_ascii=False)
-        
-        # Normal flow: Update last conversation entry with user response
+        # Update last conversation entry with user response
         self._update_last_response(session_id, user_response)
         
         # Check if all stages are complete
@@ -611,6 +531,74 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
         
         return json.dumps(response, indent=2, ensure_ascii=False)
     
+    async def _handle_set_total_stages_action(
+        self,
+        session_id: str,
+        total_stages: int,
+        question: str,
+        suggestions: List[str],
+        ctx: Optional[Context] = None
+    ) -> str:
+        """
+        Handle 'set_total_stages' action - Set total_stages after LLM analysis
+        
+        This is called by the LLM after analyzing the initial_prompt in the 'start' action.
+        The LLM determines:
+        1. How many refinement stages are needed (total_stages)
+        2. The first clarifying question
+        3. Three alternative suggestions
+        
+        Args:
+            session_id: Session identifier from 'start' action
+            total_stages: Number of refinement stages determined by LLM (required)
+            question: First clarifying question (required)
+            suggestions: 3 alternative suggestions (required)
+            ctx: MCP context
+            
+        Returns:
+            JSON response with first refinement stage ready
+        """
+        session = self._get_session(session_id)
+        
+        # Validate total_stages
+        if total_stages <= 0:
+            raise ValueError("total_stages must be greater than 0")
+        
+        # Validate suggestions
+        if len(suggestions) != 3:
+            raise ValueError("Exactly 3 suggestions must be provided")
+        
+        # Set total_stages for the session
+        session['total_stages'] = total_stages
+        session['status'] = 'awaiting_response'
+        session['last_updated'] = datetime.now().isoformat()
+        
+        # Add first conversation entry
+        self._add_conversation_entry(
+            session_id=session_id,
+            ai_question=question,
+            suggestions=suggestions
+        )
+        
+        progress_percentage = (session['current_stage'] / session['total_stages']) * 100
+        
+        response = {
+            'success': True,
+            'action': 'set_total_stages',
+            'session_id': session_id,
+            'status': 'awaiting_response',
+            'stage': session['current_stage'],
+            'total_stages': session['total_stages'],
+            'progress_percentage': progress_percentage,
+            'message': f'🚀 Analysis complete! Starting refinement - Stage {session["current_stage"]}/{session["total_stages"]} ({progress_percentage:.0f}%)',
+            'question': question,
+            'suggestions': suggestions
+        }
+        
+        await self.log_execution(ctx, f"Set total_stages={total_stages} for session: {session_id}")
+        
+        return json.dumps(response, indent=2, ensure_ascii=False)
+    
     async def _handle_add_feature_action(
         self,
         session_id: str,
@@ -771,6 +759,23 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
                     ctx=ctx
                 )
             
+            elif action == 'set_total_stages':
+                if not session_id:
+                    raise ValueError("session_id is required for 'set_total_stages' action")
+                if not total_stages:
+                    raise ValueError("total_stages is required for 'set_total_stages' action")
+                if not question:
+                    raise ValueError("question is required for 'set_total_stages' action")
+                if not suggestions:
+                    raise ValueError("suggestions is required for 'set_total_stages' action")
+                return await self._handle_set_total_stages_action(
+                    session_id=session_id,
+                    total_stages=total_stages,
+                    question=question,
+                    suggestions=suggestions,
+                    ctx=ctx
+                )
+            
             elif action == 'respond':
                 if not session_id:
                     raise ValueError("session_id is required for 'respond' action")
@@ -823,7 +828,7 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
                 )
             
             else:
-                raise ValueError(f"Unknown action: {action}. Valid actions: start, respond, get_status, list_sessions, finalize, add_feature")
+                raise ValueError(f"Unknown action: {action}. Valid actions: start, set_total_stages, respond, get_status, list_sessions, finalize, add_feature")
         
         except Exception as e:
             logger.error(f"Error executing Vibe Coding action '{action}': {str(e)}")

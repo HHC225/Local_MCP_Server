@@ -34,30 +34,42 @@ async def vibe_coding(
     interactive refinement. Instead of making assumptions, this tool asks clarifying 
     questions and provides 3 alternative suggestions at each step.
     
-    🔄 **IMPROVED WORKFLOW:**
+    🔄 **WORKFLOW:**
     1. User provides vague initial prompt
-    2. AI analyzes complexity and determines total_stages needed
-    3. AI automatically loops through stages with questions and suggestions
-    4. Each stage refines the specification further
-    5. After completion, always suggests additional features
-    6. Additional features extend the session (no restart needed)
+    2. Tool creates session (action='start')
+    3. LLM analyzes prompt and determines total_stages needed
+    4. LLM calls set_total_stages with total_stages, first question, and 3 suggestions
+    5. User responds → LLM continues with respond action
+    6. Loop continues through all stages
+    7. After completion, suggests additional features
     
     📋 **ACTIONS:**
     
-    **1. 'start' - Initialize New Session with Stage Analysis:**
+    **1. 'start' - Initialize New Session (User Input):**
     ```python
-    # Step 1a: User provides vague prompt, AI creates session
+    # User provides initial vague prompt
     result = await vibe_coding(
         action="start",
         initial_prompt="I want to build an API"
     )
-    # Returns: session_id, status='analyzing', instructions to determine stages
+    # Returns: session_id and instructions for LLM to analyze
+    # Status: 'analyzing'
     
-    # Step 1b: AI analyzes and determines total stages needed
+    # Response tells LLM to:
+    # 1. Analyze the prompt complexity
+    # 2. Determine total_stages needed
+    # 3. Create first question and 3 suggestions
+    # 4. Call set_total_stages action
+    ```
+    
+    **2. 'set_total_stages' - Set Analysis Results (LLM Analysis):**
+    ```python
+    # LLM analyzes and determines total_stages
+    # Then calls this to begin refinement:
     result = await vibe_coding(
-        action="start",
-        initial_prompt="I want to build an API",
-        total_stages=5,  # AI determined 5 stages are needed
+        action="set_total_stages",
+        session_id="vc_session_1234567890_abc123",
+        total_stages=5,  # LLM determined 5 stages needed
         question="What type of API architecture would you like?",
         suggestions=[
             "RESTful API with Express.js and PostgreSQL for CRUD operations",
@@ -65,12 +77,13 @@ async def vibe_coding(
             "gRPC API for high-performance microservices communication"
         ]
     )
-    # Returns: session_id, status='awaiting_response', stage=1/5
+    # Returns: stage=1/5, status='awaiting_response'
+    # Now ready for user's first response
     ```
     
-    **2. 'respond' - Process User Response and Auto-Continue:**
+    **3. 'respond' - Process User Response and Continue:**
     ```python
-    # Step 2: User selects option, AI continues to next stage
+    # User selects option, LLM continues to next stage
     result = await vibe_coding(
         action="respond",
         session_id="vc_session_1234567890_abc123",
@@ -82,28 +95,20 @@ async def vibe_coding(
             "API Key authentication for server-to-server communication"
         ]
     )
-    # Returns: status='awaiting_response', stage=2/5, progress=40%
+    # Returns: stage=2/5, status='awaiting_response', progress=40%
     
-    # This continues automatically until stage 5/5 is complete
+    # This continues automatically until all stages are complete
     # Then returns: status='completed', refined_prompt, additional_features_suggestions
     ```
     
-    **3. 'add_feature' - Extend Session with Additional Features:**
+    **4. 'add_feature' - Extend Session with Additional Features:**
     ```python
-    # Step 3a: User wants to add feature after completion
-    result = await vibe_coding(
-        action="add_feature",
-        session_id="vc_session_1234567890_abc123",  # Same session!
-        feature_description="Add real-time WebSocket support for notifications"
-    )
-    # Returns: status='analyzing_feature', instructions to determine additional stages
-    
-    # Step 3b: AI determines additional stages needed
+    # User wants to add feature after completion
     result = await vibe_coding(
         action="add_feature",
         session_id="vc_session_1234567890_abc123",
         feature_description="Add real-time WebSocket support for notifications",
-        additional_stages=3,  # AI determined 3 more stages needed
+        additional_stages=3,  # LLM determines additional stages needed
         question="What WebSocket library should be used?",
         suggestions=[
             "Socket.io for cross-browser compatibility",
@@ -112,19 +117,18 @@ async def vibe_coding(
         ]
     )
     # Returns: total_stages extended from 5 to 8, stage=6/8
-    # All previous context is maintained!
     ```
     
-    **4. 'get_status' - Check Session State:**
+    **5. 'get_status' - Check Session State:**
     ```python
     result = await vibe_coding(
         action="get_status",
         session_id="vc_session_1234567890_abc123"
     )
-    # Returns: Full session state with all conversation history
+    # Returns: Full session state with conversation history
     ```
     
-    **5. 'list_sessions' - List All Sessions:**
+    **6. 'list_sessions' - List All Sessions:**
     ```python
     result = await vibe_coding(
         action="list_sessions"
@@ -132,7 +136,7 @@ async def vibe_coding(
     # Returns: List of all active sessions
     ```
     
-    **6. 'finalize' - Complete with Final Prompt:**
+    **7. 'finalize' - Complete with Final Prompt:**
     ```python
     result = await vibe_coding(
         action="finalize",
@@ -144,52 +148,67 @@ async def vibe_coding(
     
     🎨 **AI USAGE PATTERN:**
     
-    The AI should follow this improved pattern:
-    
     ```
     1. User: "I want to build something"
-       AI: Analyzes complexity → Determines needs 5 stages
-       AI: Calls vibe_coding(action='start', total_stages=5, question="...", suggestions=[...])
-       AI: Presents options to user → "Stage 1/5 (20%)"
+       AI: Calls vibe_coding(action='start', initial_prompt="...")
+       Tool: Returns session_id and analysis instructions
+       
+    2. AI: Analyzes complexity → "This needs 5 stages"
+       AI: Calls vibe_coding(
+           action='set_total_stages',
+           session_id="...",
+           total_stages=5,
+           question="...",
+           suggestions=[...]
+       )
+       Tool: Returns stage 1/5, ready for user input
+       
+    3. User: "I choose option 2"
+       AI: Calls vibe_coding(
+           action='respond',
+           user_response="...",
+           next_question="...",
+           next_suggestions=[...]
+       )
+       Tool: Returns stage 2/5
+       
+    4. Loop continues through all 5 stages...
     
-    2. User: "I choose option 2"
-       AI: Calls vibe_coding(action='respond', user_response="...", next_question="...", next_suggestions=[...])
-       AI: Presents next options → "Stage 2/5 (40%)"
-    
-    3. Loop continues through all 5 stages...
-    
-    4. Stage 5/5 complete:
-       AI: Returns refined_prompt + additional_features_suggestions
-       AI: "Would you like to add any features?"
-    
-    5. User: "Add WebSocket support"
-       AI: Analyzes → Determines needs 3 more stages
-       AI: Calls vibe_coding(action='add_feature', additional_stages=3, ...)
-       AI: Continues from stage 6/8 (same session!)
+    5. Stage 5/5 complete:
+       Tool: Returns refined_prompt + feature suggestions
+       
+    6. User: "Add WebSocket support"
+       AI: Analyzes → needs 3 more stages
+       AI: Calls vibe_coding(
+           action='add_feature',
+           additional_stages=3,
+           ...
+       )
+       Tool: Extends to stage 6/8
     ```
     
     ⚡ **KEY FEATURES:**
-    - **Stage Planning**: AI determines total stages needed upfront
+    - **Two-Step Start**: start creates session → LLM analyzes → set_total_stages begins refinement
+    - **LLM-Driven Analysis**: LLM determines total_stages by analyzing prompt complexity
     - **Auto-Loop**: Continues through all stages automatically
-    - **Progress Tracking**: Shows stage X/Y and percentage progress
-    - **Session Continuity**: add_feature extends session without restart
-    - **Context Preservation**: All previous decisions maintained
-    - **Always Suggest Features**: Completed sessions always show feature suggestions
+    - **Progress Tracking**: Shows stage X/Y and percentage
+    - **Session Continuity**: add_feature extends without restart
+    - **Context Preservation**: All decisions maintained
     
     🎯 **BEST PRACTICES:**
     
-    1. **Analyze First**: Determine total_stages based on prompt complexity
-    2. **Progress Feedback**: Show stage X/Y to user at each step
-    3. **Feature-Ready**: Always end with additional feature suggestions
-    4. **No Restarts**: Use add_feature to extend, never restart session
-    5. **Track Context**: Build on all previous conversation history
+    1. **Start Simple**: User calls start with just initial_prompt
+    2. **LLM Analyzes**: LLM analyzes and calls set_total_stages
+    3. **Progress Feedback**: Show stage X/Y to user at each step
+    4. **Feature-Ready**: Always end with feature suggestions
+    5. **No Restarts**: Use add_feature to extend
     
     📊 **RESPONSE FORMAT:**
     
     ```json
     {
         "success": true,
-        "action": "start|respond|add_feature|get_status|list_sessions|finalize",
+        "action": "start|set_total_stages|respond|add_feature|get_status|list_sessions|finalize",
         "session_id": "vc_session_1234567890_abc123",
         "status": "analyzing|awaiting_response|completed|refining_feature",
         "stage": 2,
@@ -199,30 +218,30 @@ async def vibe_coding(
         "question": "Next clarifying question",
         "suggestions": ["Option 1", "Option 2", "Option 3"],
         "refined_prompt": "Final refined prompt (when completed)",
-        "additional_features_suggestions": "Feature suggestion prompt (when completed)"
+        "additional_features_suggestions": "Feature suggestion prompt"
     }
     ```
     
     ⚠️ **IMPORTANT NOTES:**
     
-    - AI must analyze and set total_stages at the start
+    - **start** only needs initial_prompt (LLM analyzes separately)
+    - **set_total_stages** requires total_stages, question, suggestions (LLM provides after analysis)
     - Always provide exactly 3 suggestions per stage
     - Session extends with add_feature, never restarts
     - Completed sessions always include feature suggestions
-    - Progress tracking: stage/total_stages and percentage
     
     Args:
-        action: Action to perform (start, respond, get_status, list_sessions, finalize, add_feature)
-        session_id: Session identifier (required for respond, get_status, finalize, add_feature)
+        action: Action to perform (start, set_total_stages, respond, get_status, list_sessions, finalize, add_feature)
+        session_id: Session identifier (required for most actions except start)
         initial_prompt: User's initial vague prompt (required for start)
         user_response: User's response to suggestions (required for respond)
-        question: AI's clarifying question (for start/respond/add_feature)
-        suggestions: AI's 3 alternative suggestions (for start/respond/add_feature)
+        question: AI's clarifying question (for set_total_stages/respond/add_feature)
+        suggestions: AI's 3 alternative suggestions (for set_total_stages/respond/add_feature)
         next_question: AI's next clarifying question (for respond)
         next_suggestions: AI's next 3 suggestions (for respond)
         is_final: Whether refinement is complete (for respond)
         final_prompt: Final refined prompt (for finalize)
-        total_stages: Total stages needed (for start)
+        total_stages: Total stages needed (for set_total_stages - determined by LLM)
         feature_description: Feature to add (for add_feature)
         additional_stages: Additional stages for feature (for add_feature)
         ctx: MCP context for logging
