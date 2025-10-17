@@ -73,6 +73,27 @@ result = await conversation_memory_query(
 print(result)
 ```
 
+## Available Tools
+
+The Conversation Memory Tool provides 7 operations:
+
+| Tool | Purpose | Example Use Case |
+|------|---------|------------------|
+| `conversation_memory_store` | Save new conversation | Store initial decision or discussion |
+| `conversation_memory_query` | Semantic search | Find past conversations by meaning |
+| `conversation_memory_list` | Browse all conversations | Review stored entries |
+| `conversation_memory_get` | Retrieve by ID | Get specific conversation for review |
+| `conversation_memory_update` | Modify existing entry | Update decisions, add info, fix mistakes |
+| `conversation_memory_delete` | Remove single entry | Clean up specific conversation |
+| `conversation_memory_clear` | Remove all entries | Reset database (use with caution) |
+
+**Key Features:**
+- ✅ **Automatic embeddings** - No manual embedding required
+- 🔍 **Semantic search** - Find by meaning, not just keywords
+- 🔄 **Update support** - Modify conversations without losing ID
+- 📊 **Metadata filtering** - Combine search with filters
+- 💾 **Persistent storage** - Data survives server restarts
+
 ## File Structure
 
 After setup, your project structure will include:
@@ -242,7 +263,70 @@ for conv in result['conversations']:
     print(f"- {conv['id']}: {conv['document'][:100]}...")
 ```
 
-### Example 4: Clean Up Old Conversations
+### Example 4: Update Existing Conversation
+
+```python
+# Store initial decision
+result = await conversation_memory_store(
+    conversation_text="Initial API design discussion...",
+    speaker="Team",
+    summary="Decision: Use REST API",
+    metadata={"topic": "API", "status": "decided"}
+)
+conv_id = result["conversation_id"]
+
+# Later, retrieve and review
+get_result = await conversation_memory_get(conversation_id=conv_id)
+print(f"Current: {get_result['conversation']['document']}")
+
+# Update when requirements change
+await conversation_memory_update(
+    conversation_id=conv_id,
+    conversation_text="Initial API design discussion... [Updated] Switched to GraphQL for better flexibility",
+    summary="Decision (Updated): Use GraphQL API for flexible querying",
+    metadata={"status": "revised", "revision_date": "2025-10-15"},
+    merge_metadata=True  # Keeps existing metadata, adds new fields
+)
+
+print("Conversation updated successfully!")
+```
+
+### Example 5: Progressive Documentation
+
+```python
+# Day 1: Start documentation
+result = await conversation_memory_store(
+    conversation_text="Research on authentication methods...",
+    summary="Initial research: JWT vs OAuth comparison",
+    metadata={"completeness": "draft", "version": "1.0"}
+)
+doc_id = result["conversation_id"]
+
+# Day 2: Add test results
+get_result = await conversation_memory_get(conversation_id=doc_id)
+existing = get_result["conversation"]["document"]
+
+await conversation_memory_update(
+    conversation_id=doc_id,
+    conversation_text=existing + "\n\n[Day 2] Performance tests completed. JWT shows 15% better performance.",
+    metadata={"completeness": "in-progress", "version": "1.1"},
+    merge_metadata=True
+)
+
+# Day 3: Finalize
+get_result = await conversation_memory_get(conversation_id=doc_id)
+final = get_result["conversation"]["document"] + "\n\n[Day 3] Final decision: Implementing JWT"
+
+await conversation_memory_update(
+    conversation_id=doc_id,
+    conversation_text=final,
+    summary="Complete authentication research and decision: JWT selected for performance and simplicity",
+    metadata={"completeness": "final", "version": "2.0", "implemented": True},
+    merge_metadata=True
+)
+```
+
+### Example 6: Clean Up Old Conversations
 
 ```python
 # Delete specific conversation
@@ -296,6 +380,50 @@ result = await conversation_memory_list()
 
 # Monthly: Archive old projects
 # (manually backup chroma_db/, then clear)
+```
+
+### 4. Update vs Delete-Recreate
+
+**Always prefer update over delete-recreate:**
+
+❌ **Bad**: Delete and create new (loses conversation ID)
+```python
+await conversation_memory_delete(conversation_id=old_id)
+result = await conversation_memory_store(
+    conversation_text=new_text,
+    ...
+)
+# Problem: New ID created, references broken!
+```
+
+✅ **Good**: Update existing (preserves ID)
+```python
+await conversation_memory_update(
+    conversation_id=old_id,
+    conversation_text=new_text,
+    merge_metadata=True
+)
+# Same ID maintained, references preserved
+```
+
+### 5. Metadata Merge Strategy
+
+**Choose the right merge strategy for your use case:**
+
+```python
+# Merge (default): Add/update specific fields
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"status": "resolved"},
+    merge_metadata=True  # Keeps all other metadata
+)
+
+# Replace: Complete metadata overwrite
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"topic": "new_topic"},
+    merge_metadata=False  # Removes all previous metadata
+)
 ```
 
 ## Troubleshooting
@@ -397,9 +525,40 @@ collection_name = f"conversations_{project_name}"
 ## Next Steps
 
 1. **Read the full documentation**: [conversation-memory.md](conversation-memory.md)
-2. **Try the examples**: Test storing and querying conversations
+2. **Try the examples**: Test storing, querying, and updating conversations
 3. **Integrate with workflow**: Use in your daily development process
 4. **Customize metadata**: Define your own metadata schema
+5. **Practice updates**: Learn when to use merge vs replace strategies
+
+## Common Workflows
+
+### Workflow 1: Decision Tracking with Updates
+
+```
+1. Store initial decision → Get conversation_id
+2. Implement based on decision
+3. If requirements change → Update conversation with new decision
+4. Query to see decision history
+```
+
+### Workflow 2: Progressive Documentation
+
+```
+1. Store draft notes → conversation_id saved
+2. Day 2: Get conversation → Add findings → Update
+3. Day 3: Get conversation → Add final decision → Update
+4. Result: Complete documentation with history
+```
+
+### Workflow 3: Status Management
+
+```
+1. Store conversation with status="pending"
+2. Update status="in-progress" when work starts
+3. Update status="review" when ready
+4. Update status="completed" when done
+5. Query filter_metadata={"status": "completed"} to find finished items
+```
 
 ## Support
 

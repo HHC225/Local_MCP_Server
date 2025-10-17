@@ -119,7 +119,30 @@ async def vibe_coding(
     # Returns: total_stages extended from 5 to 8, stage=6/8
     ```
     
-    **5. 'get_status' - Check Session State:**
+    **5. 'start_technical_phase' - Begin Technical Implementation Refinement (NEW):**
+    ```python
+    # After idea phase completes, start technical refinement
+    result = await vibe_coding(
+        action="start_technical_phase",
+        session_id="vc_session_1234567890_abc123",
+        total_stages=5  # Optional, defaults to 5 technical stages
+    )
+    # Returns: First technical question about architecture/implementation
+    # Technical categories: Architecture, Stack, Structure, Data Layer, API, Security, Testing
+    ```
+    
+    **6. 'skip_technical_phase' - End at Idea Phase (NEW):**
+    ```python
+    # User wants only functional specification, no technical details
+    result = await vibe_coding(
+        action="skip_technical_phase",
+        session_id="vc_session_1234567890_abc123"
+    )
+    # Returns: Completed session with idea phase results only
+    # Can resume technical phase later if needed
+    ```
+    
+    **7. 'get_status' - Check Session State:**
     ```python
     result = await vibe_coding(
         action="get_status",
@@ -128,7 +151,7 @@ async def vibe_coding(
     # Returns: Full session state with conversation history
     ```
     
-    **6. 'list_sessions' - List All Sessions:**
+    **8. 'list_sessions' - List All Sessions:**
     ```python
     result = await vibe_coding(
         action="list_sessions"
@@ -136,7 +159,7 @@ async def vibe_coding(
     # Returns: List of all active sessions
     ```
     
-    **7. 'finalize' - Complete with Final Prompt:**
+    **9. 'finalize' - Complete with Final Prompt:**
     ```python
     result = await vibe_coding(
         action="finalize",
@@ -146,9 +169,10 @@ async def vibe_coding(
     # Returns: Completed session with additional_features_suggestions
     ```
     
-    🎨 **AI USAGE PATTERN:**
+    🎨 **AI USAGE PATTERN (Two-Phase Workflow):**
     
     ```
+    PHASE 1: IDEA REFINEMENT
     1. User: "I want to build something"
        AI: Calls vibe_coding(action='start', initial_prompt="...")
        Tool: Returns session_id and analysis instructions
@@ -172,45 +196,138 @@ async def vibe_coding(
        )
        Tool: Returns stage 2/5
        
-    4. Loop continues through all 5 stages...
+    4. Loop continues through all 5 idea stages...
     
-    5. Stage 5/5 complete:
-       Tool: Returns refined_prompt + feature suggestions
+    5. Idea phase complete:
+       Tool: Returns status='idea_phase_completed' with options
        
-    6. User: "Add WebSocket support"
-       AI: Analyzes → needs 3 more stages
-       AI: Calls vibe_coding(
-           action='add_feature',
-           additional_stages=3,
-           ...
-       )
-       Tool: Extends to stage 6/8
+    PHASE 2: TECHNICAL REFINEMENT (NEW)
+    6a. User: "Yes, continue to technical phase"
+        AI: Calls vibe_coding(
+            action='start_technical_phase',
+            session_id="..."
+        )
+        Tool: Returns first technical question (Architecture)
+        
+    6b. Alternative: User: "No, just give me the spec"
+        AI: Calls vibe_coding(
+            action='skip_technical_phase',
+            session_id="..."
+        )
+        Tool: Returns completed specification
+        
+    7. If technical phase started:
+       User responds to technical questions (Architecture, Stack, Structure, etc.)
+       AI: Calls vibe_coding(action='respond', ...)
+       Loop continues through 5-7 technical stages
+       
+    8. Technical phase complete:
+       Tool: Returns comprehensive specification ready for WBS
+    ```
+    
+    🔧 **TECHNICAL PHASE QUESTION CATEGORIES (NEW):**
+    
+    1. **Architecture & Patterns** (Stage 1)
+       - Application architecture type (Monolithic/Microservices/Serverless)
+       - Design patterns to use
+       - Scalability considerations
+    
+    2. **Project Structure** (Stage 2)
+       - Folder organization (Feature-based/Layer-based/Domain-driven)
+       - Module boundaries
+       - Code separation strategy
+    
+    3. **Database Strategy** (Stage 3)
+       - Database choice (SQL/NoSQL/Polyglot)
+       - Schema design approach
+       - Migration strategy
+       - Caching approach
+    
+    4. **API/Interface Design** (Stage 4)
+       - API patterns (REST/GraphQL/Hybrid)
+       - Endpoint structure
+       - Request/response formats
+       - Documentation approach
+    
+    5. **Code Organization Patterns** (Stage 5)
+       - Design patterns (Repository/Service Layer/CQRS)
+       - Dependency injection
+       - Data transfer objects
+    
+    6. **Security & Authentication** (Stage 6, if needed)
+       - Authentication method (JWT/OAuth/API Key)
+       - Authorization strategy
+       - Data validation
+    
+    7. **Testing Strategy** (Stage 7, if needed)
+       - Testing pyramid approach
+       - Tools and frameworks
+       - CI/CD integration
+    
+    **Each Technical Suggestion Includes:**
+    - Technology/approach name
+    - Brief description
+    - Key benefits and trade-offs in parentheses
+    
+    📊 **FINAL OUTPUT FORMAT (After Both Phases):**
+    
+    ```markdown
+    # Project Specification & Technical Implementation Plan
+    
+    ## 1. Functional Specification (Idea Phase)
+    [User's refined requirements and features]
+    
+    ## 2. Technical Implementation Plan
+    ### 2.1 Technical Decisions
+    - Architecture choice with reasoning
+    - Technology stack selections
+    - Project structure approach
+    - Database strategy
+    - API patterns
+    - Code organization patterns
+    
+    ### 2.2 Implementation Roadmap
+    1. Project Setup
+    2. Core Infrastructure
+    3. Feature Implementation
+    4. Testing & Quality
+    5. Deployment
+    
+    ### 2.3 Next Steps
+    - Ready for Planning tool (WBS generation)
+    - Ready for WBS Execution tool
     ```
     
     ⚡ **KEY FEATURES:**
+    - **Two-Phase Refinement**: Idea (WHAT) → Technical (HOW) (NEW)
     - **Two-Step Start**: start creates session → LLM analyzes → set_total_stages begins refinement
     - **LLM-Driven Analysis**: LLM determines total_stages by analyzing prompt complexity
     - **Auto-Loop**: Continues through all stages automatically
-    - **Progress Tracking**: Shows stage X/Y and percentage
+    - **Progress Tracking**: Shows stage X/Y and percentage for each phase
     - **Session Continuity**: add_feature extends without restart
-    - **Context Preservation**: All decisions maintained
+    - **Context Preservation**: All decisions maintained across phases
+    - **Technical Templates**: Pre-defined technical questions for consistency (NEW)
+    - **Comprehensive Output**: Combined functional + technical specification (NEW)
     
     🎯 **BEST PRACTICES:**
     
     1. **Start Simple**: User calls start with just initial_prompt
     2. **LLM Analyzes**: LLM analyzes and calls set_total_stages
     3. **Progress Feedback**: Show stage X/Y to user at each step
-    4. **Feature-Ready**: Always end with feature suggestions
-    5. **No Restarts**: Use add_feature to extend
+    4. **Phase Transition**: After idea phase, offer technical phase option
+    5. **User Choice**: Let user decide whether to continue to technical phase
+    6. **No Restarts**: Use add_feature to extend, not restart
+    7. **WBS Ready**: Final output is ready for Planning and WBS Execution tools
     
     📊 **RESPONSE FORMAT:**
     
     ```json
     {
         "success": true,
-        "action": "start|set_total_stages|respond|add_feature|get_status|list_sessions|finalize",
+        "action": "start|set_total_stages|respond|add_feature|start_technical_phase|skip_technical_phase|get_status|list_sessions|finalize",
         "session_id": "vc_session_1234567890_abc123",
-        "status": "analyzing|awaiting_response|completed|refining_feature",
+        "status": "analyzing|awaiting_response|idea_phase_completed|technical_phase_started|completed|completed_idea_only",
+        "current_phase": "idea|technical",
         "stage": 2,
         "total_stages": 5,
         "progress_percentage": 40,
@@ -218,6 +335,7 @@ async def vibe_coding(
         "question": "Next clarifying question",
         "suggestions": ["Option 1", "Option 2", "Option 3"],
         "refined_prompt": "Final refined prompt (when completed)",
+        "technical_specification": "Full technical spec (when both phases completed)",
         "additional_features_suggestions": "Feature suggestion prompt"
     }
     ```
@@ -226,9 +344,13 @@ async def vibe_coding(
     
     - **start** only needs initial_prompt (LLM analyzes separately)
     - **set_total_stages** requires total_stages, question, suggestions (LLM provides after analysis)
+    - **start_technical_phase** begins after idea phase completion (NEW)
+    - **skip_technical_phase** allows ending at idea phase only (NEW)
     - Always provide exactly 3 suggestions per stage
     - Session extends with add_feature, never restarts
-    - Completed sessions always include feature suggestions
+    - Completed sessions include functional and/or technical specifications
+    - Technical phase uses pre-defined question templates for consistency (NEW)
+    - Final output is ready for Planning and WBS Execution tools (NEW)
     
     Args:
         action: Action to perform (start, set_total_stages, respond, get_status, list_sessions, finalize, add_feature)

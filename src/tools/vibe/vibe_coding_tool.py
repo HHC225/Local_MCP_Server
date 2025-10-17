@@ -62,7 +62,26 @@ class VibeCodingTool(BaseTool):
             'status': 'analyzing' if total_stages == 0 else 'refinement_needed',
             'created_at': datetime.now().isoformat(),
             'last_updated': datetime.now().isoformat(),
-            'additional_features': []
+            'additional_features': [],
+            
+            # NEW: Two-phase support
+            'current_phase': 'idea',  # 'idea' or 'technical'
+            'phases': {
+                'idea': {
+                    'total_stages': total_stages,
+                    'current_stage': 0,
+                    'conversation_history': [],
+                    'refined_output': '',
+                    'completed': False
+                },
+                'technical': {
+                    'total_stages': 0,
+                    'current_stage': 0,
+                    'conversation_history': [],
+                    'technical_spec': {},
+                    'completed': False
+                }
+            }
         }
         
         logger.info(f"Created new Vibe Coding session: {session_id}")
@@ -103,7 +122,8 @@ class VibeCodingTool(BaseTool):
         session_id: str,
         ai_question: str,
         suggestions: List[str],
-        user_response: Optional[str] = None
+        user_response: Optional[str] = None,
+        phase: Optional[str] = None
     ) -> None:
         """
         Add entry to conversation history
@@ -113,20 +133,35 @@ class VibeCodingTool(BaseTool):
             ai_question: AI's clarifying question
             suggestions: List of 3 alternative suggestions
             user_response: User's response (optional, added later)
+            phase: Phase to add entry to ('idea' or 'technical', default: current_phase)
         """
         session = self._get_session(session_id)
+        
+        # Determine which phase to update
+        target_phase = phase or session['current_phase']
+        
+        # Update phase-specific stage counter
+        session['phases'][target_phase]['current_stage'] += 1
+        
+        # Update global stage counter (for backward compatibility)
         session['current_stage'] += 1
         
         entry = {
-            'stage': session['current_stage'],
+            'stage': session['phases'][target_phase]['current_stage'],
+            'global_stage': session['current_stage'],
+            'phase': target_phase,
             'ai_question': ai_question,
             'suggestions': suggestions,
             'user_response': user_response,
             'timestamp': datetime.now().isoformat()
         }
         
+        # Add to both global and phase-specific history
         session['conversation_history'].append(entry)
-        logger.info(f"Added conversation entry for session {session_id}, stage {session['current_stage']}")
+        session['phases'][target_phase]['conversation_history'].append(entry)
+        
+        logger.info(f"Added {target_phase} phase conversation entry for session {session_id}, stage {session['phases'][target_phase]['current_stage']}")
+
     
     def _update_last_response(self, session_id: str, user_response: str) -> None:
         """
@@ -287,53 +322,105 @@ class VibeCodingTool(BaseTool):
             JSON response with next steps
         """
         session = self._get_session(session_id)
+        current_phase = session['current_phase']
+        phase_data = session['phases'][current_phase]
         
         # Update last conversation entry with user response
         self._update_last_response(session_id, user_response)
         
-        # Check if all stages are complete
-        if session['current_stage'] >= session['total_stages']:
-            # Generate final summary with additional feature suggestions
-            session['refined_prompt'] = self._generate_refined_prompt(session)
-            self._update_session_status(session_id, 'completed')
-            
-            # Generate additional feature suggestions
-            additional_features_prompt = self._generate_additional_features_suggestions()
-            
-            response = {
-                'success': True,
-                'action': 'respond',
-                'session_id': session_id,
-                'status': 'completed',
-                'stage': session['current_stage'],
-                'total_stages': session['total_stages'],
-                'message': '✅ All stages completed! Prompt refinement finished.',
-                'refined_prompt': session['refined_prompt'],
-                'summary': self._format_session_summary(session),
-                'additional_features_suggestions': additional_features_prompt
-            }
-            
-            await self.log_execution(ctx, f"Completed all stages for session: {session_id}")
-            return json.dumps(response, indent=2, ensure_ascii=False)
+        # Check if current phase stages are complete
+        if phase_data['current_stage'] >= phase_data['total_stages']:
+            # Phase completed
+            if current_phase == 'idea':
+                # Idea phase completed - AUTO START technical phase
+                session['phases']['idea']['completed'] = True
+                session['phases']['idea']['refined_output'] = self._generate_refined_prompt(session)
+                
+                # Set technical phase as current
+                session['current_phase'] = 'technical'
+                
+                # Set total stages for technical phase (default: 7)
+                default_technical_stages = 7
+                session['phases']['technical']['total_stages'] = default_technical_stages
+                session['status'] = 'technical_phase_auto_started'
+                session['last_updated'] = datetime.now().isoformat()
+                
+                # Get first technical question
+                first_question = self._get_technical_question_template(1, session)
+                
+                # Add first conversation entry for technical phase
+                self._add_conversation_entry(
+                    session_id=session_id,
+                    ai_question=first_question['question'],
+                    suggestions=first_question['suggestions'],
+                    phase='technical'
+                )
+                
+                self._update_session_status(session_id, 'awaiting_response')
+                
+                response = {
+                    'success': True,
+                    'action': 'respond',
+                    'session_id': session_id,
+                    'status': 'awaiting_response',
+                    'current_phase': 'technical',
+                    'stage': 1,
+                    'total_stages': default_technical_stages,
+                    'progress_percentage': (1 / default_technical_stages) * 100,
+                    'message': f'✅ Idea refinement complete!\n\n🔧 **Auto-Starting Technical Implementation Phase**\n\nStage 1/{default_technical_stages} ({(1/default_technical_stages)*100:.0f}%)',
+                    'idea_phase_summary': session['phases']['idea']['refined_output'],
+                    'question': first_question['question'],
+                    'suggestions': first_question['suggestions']
+                }
+                
+                await self.log_execution(ctx, f"Auto-started technical phase for session: {session_id}")
+                return json.dumps(response, indent=2, ensure_ascii=False)
+                
+            elif current_phase == 'technical':
+                # Technical phase completed - generate final spec
+                session['phases']['technical']['completed'] = True
+                session['refined_prompt'] = self._generate_technical_specification(session)
+                self._update_session_status(session_id, 'completed')
+                
+                response = {
+                    'success': True,
+                    'action': 'respond',
+                    'session_id': session_id,
+                    'status': 'completed',
+                    'current_phase': 'technical',
+                    'stage': phase_data['current_stage'],
+                    'total_stages': phase_data['total_stages'],
+                    'message': '✅ Technical refinement complete! Full specification generated.',
+                    'refined_prompt': session['refined_prompt'],
+                    'technical_specification': session['refined_prompt'],
+                    'summary': self._format_session_summary(session),
+                    'next_steps': '💡 Use Planning tool to create WBS, then WBS Execution tool to implement.'
+                }
+                
+                await self.log_execution(ctx, f"Completed technical phase for session: {session_id}")
+                return json.dumps(response, indent=2, ensure_ascii=False)
         
         # Check if refinement is complete (manual override)
         if is_final:
-            session['refined_prompt'] = user_response
-            self._update_session_status(session_id, 'completed')
-            
-            additional_features_prompt = self._generate_additional_features_suggestions()
+            if current_phase == 'idea':
+                session['phases']['idea']['completed'] = True
+                session['phases']['idea']['refined_output'] = user_response
+                self._update_session_status(session_id, 'idea_phase_completed')
+            else:
+                session['phases']['technical']['completed'] = True
+                session['refined_prompt'] = self._generate_technical_specification(session)
+                self._update_session_status(session_id, 'completed')
             
             response = {
                 'success': True,
                 'action': 'respond',
                 'session_id': session_id,
                 'status': 'completed',
-                'stage': session['current_stage'],
-                'total_stages': session['total_stages'],
-                'message': '✅ Prompt refinement completed!',
-                'refined_prompt': session['refined_prompt'],
-                'summary': self._format_session_summary(session),
-                'additional_features_suggestions': additional_features_prompt
+                'stage': phase_data['current_stage'],
+                'total_stages': phase_data['total_stages'],
+                'message': '✅ Refinement completed!',
+                'refined_prompt': session.get('refined_prompt', session['phases']['idea']['refined_output']),
+                'summary': self._format_session_summary(session)
             }
             
             await self.log_execution(ctx, f"Completed session: {session_id}")
@@ -344,24 +431,33 @@ class VibeCodingTool(BaseTool):
                 if len(next_suggestions) != 3:
                     raise ValueError("Exactly 3 suggestions must be provided")
                 
+                # For technical phase, use template if AI doesn't provide custom question
+                if current_phase == 'technical' and not next_question:
+                    next_stage = phase_data['current_stage'] + 1
+                    template = self._get_technical_question_template(next_stage, session)
+                    next_question = template['question']
+                    next_suggestions = template['suggestions']
+                
                 self._add_conversation_entry(
                     session_id=session_id,
                     ai_question=next_question,
-                    suggestions=next_suggestions
+                    suggestions=next_suggestions,
+                    phase=current_phase
                 )
                 self._update_session_status(session_id, 'awaiting_response')
                 
-                progress_percentage = (session['current_stage'] / session['total_stages']) * 100
+                progress_percentage = (phase_data['current_stage'] / phase_data['total_stages']) * 100
                 
                 response = {
                     'success': True,
                     'action': 'respond',
                     'session_id': session_id,
                     'status': 'awaiting_response',
-                    'stage': session['current_stage'],
-                    'total_stages': session['total_stages'],
+                    'current_phase': current_phase,
+                    'stage': phase_data['current_stage'],
+                    'total_stages': phase_data['total_stages'],
                     'progress_percentage': progress_percentage,
-                    'message': f'💬 Stage {session["current_stage"]}/{session["total_stages"]} - Continue refinement.',
+                    'message': f'💬 {current_phase.capitalize()} Phase - Stage {phase_data["current_stage"]}/{phase_data["total_stages"]} ({progress_percentage:.0f}%)',
                     'question': next_question,
                     'suggestions': next_suggestions
                 }
@@ -374,9 +470,10 @@ class VibeCodingTool(BaseTool):
                     'action': 'respond',
                     'session_id': session_id,
                     'status': 'refinement_needed',
-                    'stage': session['current_stage'],
-                    'total_stages': session['total_stages'],
-                    'message': f'💬 User response recorded. AI should provide next question for stage {session["current_stage"]}/{session["total_stages"]}.',
+                    'current_phase': current_phase,
+                    'stage': phase_data['current_stage'],
+                    'total_stages': phase_data['total_stages'],
+                    'message': f'💬 User response recorded. AI should provide next question for {current_phase} phase stage {phase_data["current_stage"]}/{phase_data["total_stages"]}.',
                     'user_response': user_response,
                     'conversation_history': session['conversation_history']
                 }
@@ -420,6 +517,169 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
 
 💡 **Tip:** Your additions will be integrated into the existing specification, maintaining all context and previous decisions.
 """
+    
+    def _get_technical_question_template(self, stage: int, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Get technical question template for given stage
+        
+        Args:
+            stage: Current technical stage number
+            context: Session context (idea phase results, etc.)
+            
+        Returns:
+            Dict with 'question' and 'suggestions' keys
+        """
+        templates = {
+            1: {
+                'question': "What application architecture should be used for this project?",
+                'suggestions': [
+                    "Monolithic architecture with MVC pattern (simpler deployment, good for small-medium apps, single codebase)",
+                    "Microservices architecture with API gateway (scalable, distributed, independent deployments, complex management)",
+                    "Serverless architecture with cloud functions (cost-effective, auto-scaling, event-driven, platform-dependent)"
+                ]
+            },
+            2: {
+                'question': "How should the project structure be organized?",
+                'suggestions': [
+                    "Feature-based structure: /features/auth, /features/users (grouped by functionality, easier to scale teams)",
+                    "Layer-based structure: /controllers, /services, /models (traditional MVC separation, clear layers)",
+                    "Domain-driven structure: /domain/user, /domain/product (business logic focus, bounded contexts)"
+                ]
+            },
+            3: {
+                'question': "What database strategy should be implemented?",
+                'suggestions': [
+                    "Single relational database with normalized schema (PostgreSQL with migrations, ACID transactions, structured data)",
+                    "Polyglot persistence: SQL for transactions + NoSQL for caching (PostgreSQL + Redis, optimized per use case)",
+                    "Document database with flexible schema (MongoDB with Mongoose ODM, rapid iteration, nested data)"
+                ]
+            },
+            4: {
+                'question': "What API patterns should be implemented?",
+                'suggestions': [
+                    "RESTful with resource-based routing + OpenAPI documentation (standard, cacheable, widely supported)",
+                    "GraphQL with schema-first design + Apollo Server (flexible queries, reduces over-fetching, typed)",
+                    "REST + WebSocket hybrid for real-time features (combines REST stability with real-time capabilities)"
+                ]
+            },
+            5: {
+                'question': "What code organization patterns should be used?",
+                'suggestions': [
+                    "Repository pattern + Dependency injection (testable, decoupled, easy to mock dependencies)",
+                    "Service layer pattern + DTOs (clean separation of concerns, validated data transfer)",
+                    "CQRS pattern for read/write separation (optimized queries, scalable, complex but powerful)"
+                ]
+            },
+            6: {
+                'question': "What authentication and security approach should be implemented?",
+                'suggestions': [
+                    "JWT (JSON Web Tokens) with refresh token rotation (stateless, scalable, secure with proper rotation)",
+                    "OAuth 2.0 with social login providers (Google, GitHub) (user convenience, third-party trust, reduced password management)",
+                    "API Key authentication for server-to-server communication (simple, suitable for internal services, rate limiting)"
+                ]
+            },
+            7: {
+                'question': "What testing strategy should be implemented?",
+                'suggestions': [
+                    "Testing pyramid: Unit (70%) + Integration (20%) + E2E (10%) with Jest/Mocha (balanced coverage, fast feedback)",
+                    "BDD with Cucumber + unit tests (business-readable specs, collaboration focus, higher-level scenarios)",
+                    "Contract testing + unit tests for microservices (API contract verification, service independence, Pact framework)"
+                ]
+            }
+        }
+        
+        # Return template for stage, or generic template if stage > 7
+        if stage in templates:
+            return templates[stage]
+        else:
+            return {
+                'question': f"What additional technical considerations are needed for stage {stage}?",
+                'suggestions': [
+                    "Define specific technical requirements based on project needs",
+                    "Consider performance optimization strategies",
+                    "Plan for monitoring and logging infrastructure"
+                ]
+            }
+    
+    def _generate_technical_specification(self, session: Dict[str, Any]) -> str:
+        """
+        Generate comprehensive technical specification from both phases
+        
+        Args:
+            session: Complete session data
+            
+        Returns:
+            Formatted technical specification
+        """
+        idea_phase = session['phases']['idea']
+        tech_phase = session['phases']['technical']
+        
+        spec = f"""# Project Specification & Technical Implementation Plan
+
+## Original Request
+{session['original_prompt']}
+
+## 1. Functional Specification (Idea Phase)
+
+"""
+        
+        # Add idea phase conversation
+        for entry in idea_phase['conversation_history']:
+            if entry.get('user_response'):
+                spec += f"**{entry['ai_question']}**\n{entry['user_response']}\n\n"
+        
+        if idea_phase['refined_output']:
+            spec += f"\n### Refined Specification\n{idea_phase['refined_output']}\n\n"
+        
+        spec += """---
+
+## 2. Technical Implementation Plan
+
+"""
+        
+        # Extract technical decisions
+        tech_decisions = {}
+        for i, entry in enumerate(tech_phase['conversation_history'], 1):
+            if entry.get('user_response'):
+                tech_decisions[f"decision_{i}"] = {
+                    'question': entry['ai_question'],
+                    'decision': entry['user_response']
+                }
+        
+        # Format technical specification
+        if tech_decisions:
+            spec += "### 2.1 Technical Decisions\n\n"
+            for key, decision in tech_decisions.items():
+                spec += f"**{decision['question']}**\n{decision['decision']}\n\n"
+        
+        spec += """### 2.2 Implementation Roadmap
+
+Based on the decisions above, the recommended implementation approach:
+
+1. **Project Setup**: Initialize project with chosen architecture and structure
+2. **Core Infrastructure**: Set up database, authentication, and base services
+3. **Feature Implementation**: Build features according to the functional specification
+4. **Testing & Quality**: Implement testing strategy and quality checks
+5. **Deployment**: Configure deployment pipeline and monitoring
+
+### 2.3 Next Steps
+
+This specification is ready to be converted into a Work Breakdown Structure (WBS) for systematic implementation.
+
+**Recommended workflow:**
+1. Use the Planning tool to create detailed WBS from this specification
+2. Use the WBS Execution tool to implement step-by-step
+3. Use Sequential Thinking tool for complex technical decisions during implementation
+
+"""
+        
+        if session.get('additional_features'):
+            spec += "\n### 2.4 Additional Features\n\n"
+            for i, feature in enumerate(session['additional_features'], 1):
+                spec += f"{i}. {feature}\n"
+        
+        return spec
+
     
     async def _handle_get_status_action(
         self,
@@ -531,6 +791,111 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
         
         return json.dumps(response, indent=2, ensure_ascii=False)
     
+    async def _handle_start_technical_phase_action(
+        self,
+        session_id: str,
+        total_stages: Optional[int] = None,
+        ctx: Optional[Context] = None
+    ) -> str:
+        """
+        Handle 'start_technical_phase' action - Begin technical refinement phase
+        
+        Args:
+            session_id: Session identifier
+            total_stages: Number of technical stages (optional, will use default if not provided)
+            ctx: MCP context
+            
+        Returns:
+            JSON response with first technical question
+        """
+        session = self._get_session(session_id)
+        
+        # Validate that idea phase is completed
+        if not session['phases']['idea']['completed']:
+            raise ValueError("Idea phase must be completed before starting technical phase")
+        
+        # Set technical phase as current
+        session['current_phase'] = 'technical'
+        
+        # Set total stages for technical phase (default: 5)
+        if not total_stages:
+            total_stages = 5
+        
+        session['phases']['technical']['total_stages'] = total_stages
+        session['status'] = 'technical_phase_started'
+        session['last_updated'] = datetime.now().isoformat()
+        
+        # Get first technical question
+        first_question = self._get_technical_question_template(1, session)
+        
+        # Add first conversation entry for technical phase
+        self._add_conversation_entry(
+            session_id=session_id,
+            ai_question=first_question['question'],
+            suggestions=first_question['suggestions'],
+            phase='technical'
+        )
+        
+        self._update_session_status(session_id, 'awaiting_response')
+        
+        response = {
+            'success': True,
+            'action': 'start_technical_phase',
+            'session_id': session_id,
+            'status': 'awaiting_response',
+            'current_phase': 'technical',
+            'stage': 1,
+            'total_stages': total_stages,
+            'progress_percentage': (1 / total_stages) * 100,
+            'message': f'🔧 Starting technical implementation phase - Stage 1/{total_stages}',
+            'question': first_question['question'],
+            'suggestions': first_question['suggestions']
+        }
+        
+        await self.log_execution(ctx, f"Started technical phase for session: {session_id}")
+        
+        return json.dumps(response, indent=2, ensure_ascii=False)
+    
+    async def _handle_skip_technical_phase_action(
+        self,
+        session_id: str,
+        ctx: Optional[Context] = None
+    ) -> str:
+        """
+        Handle 'skip_technical_phase' action - End session at idea phase
+        
+        Args:
+            session_id: Session identifier
+            ctx: MCP context
+            
+        Returns:
+            JSON response with idea phase results only
+        """
+        session = self._get_session(session_id)
+        
+        # Mark idea phase as completed
+        session['phases']['idea']['completed'] = True
+        session['phases']['idea']['refined_output'] = self._generate_refined_prompt(session)
+        
+        # Mark session as completed
+        self._update_session_status(session_id, 'completed_idea_only')
+        
+        response = {
+            'success': True,
+            'action': 'skip_technical_phase',
+            'session_id': session_id,
+            'status': 'completed_idea_only',
+            'current_phase': 'idea',
+            'message': '✅ Session completed with functional specification only.',
+            'refined_prompt': session['phases']['idea']['refined_output'],
+            'summary': self._format_session_summary(session),
+            'note': 'Technical implementation phase was skipped. You can resume technical phase later by calling start_technical_phase action.'
+        }
+        
+        await self.log_execution(ctx, f"Skipped technical phase for session: {session_id}")
+        
+        return json.dumps(response, indent=2, ensure_ascii=False)
+    
     async def _handle_set_total_stages_action(
         self,
         session_id: str,
@@ -568,29 +933,32 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
         if len(suggestions) != 3:
             raise ValueError("Exactly 3 suggestions must be provided")
         
-        # Set total_stages for the session
+        # Set total_stages for the session and idea phase
         session['total_stages'] = total_stages
+        session['phases']['idea']['total_stages'] = total_stages
         session['status'] = 'awaiting_response'
         session['last_updated'] = datetime.now().isoformat()
         
-        # Add first conversation entry
+        # Add first conversation entry to idea phase
         self._add_conversation_entry(
             session_id=session_id,
             ai_question=question,
-            suggestions=suggestions
+            suggestions=suggestions,
+            phase='idea'
         )
         
-        progress_percentage = (session['current_stage'] / session['total_stages']) * 100
+        progress_percentage = (session['phases']['idea']['current_stage'] / session['phases']['idea']['total_stages']) * 100
         
         response = {
             'success': True,
             'action': 'set_total_stages',
             'session_id': session_id,
             'status': 'awaiting_response',
-            'stage': session['current_stage'],
-            'total_stages': session['total_stages'],
+            'current_phase': 'idea',
+            'stage': session['phases']['idea']['current_stage'],
+            'total_stages': session['phases']['idea']['total_stages'],
             'progress_percentage': progress_percentage,
-            'message': f'🚀 Analysis complete! Starting refinement - Stage {session["current_stage"]}/{session["total_stages"]} ({progress_percentage:.0f}%)',
+            'message': f'🚀 Analysis complete! Starting idea refinement - Stage {session["phases"]["idea"]["current_stage"]}/{session["phases"]["idea"]["total_stages"]} ({progress_percentage:.0f}%)',
             'question': question,
             'suggestions': suggestions
         }
@@ -827,8 +1195,25 @@ If yes, please describe what you'd like to add, and we'll continue refining usin
                     ctx=ctx
                 )
             
+            elif action == 'start_technical_phase':
+                if not session_id:
+                    raise ValueError("session_id is required for 'start_technical_phase' action")
+                return await self._handle_start_technical_phase_action(
+                    session_id=session_id,
+                    total_stages=total_stages,
+                    ctx=ctx
+                )
+            
+            elif action == 'skip_technical_phase':
+                if not session_id:
+                    raise ValueError("session_id is required for 'skip_technical_phase' action")
+                return await self._handle_skip_technical_phase_action(
+                    session_id=session_id,
+                    ctx=ctx
+                )
+            
             else:
-                raise ValueError(f"Unknown action: {action}. Valid actions: start, set_total_stages, respond, get_status, list_sessions, finalize, add_feature")
+                raise ValueError(f"Unknown action: {action}. Valid actions: start, set_total_stages, respond, get_status, list_sessions, finalize, add_feature, start_technical_phase, skip_technical_phase")
         
         except Exception as e:
             logger.error(f"Error executing Vibe Coding action '{action}': {str(e)}")

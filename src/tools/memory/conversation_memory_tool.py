@@ -65,7 +65,7 @@ class ConversationMemoryTool(ReasoningTool):
         Execute conversation memory action
         
         Args:
-            action: Action to perform (store, query, list, delete, clear)
+            action: Action to perform (store, query, list, delete, clear, update, get)
             ctx: FastMCP context
             **kwargs: Action-specific parameters
         
@@ -84,6 +84,10 @@ class ConversationMemoryTool(ReasoningTool):
             return await self._delete_conversation(ctx, **kwargs)
         elif action == "clear":
             return await self._clear_all(ctx)
+        elif action == "update":
+            return await self._update_conversation(ctx, **kwargs)
+        elif action == "get":
+            return await self._get_conversation(ctx, **kwargs)
         else:
             raise ValueError(f"Unknown action: {action}")
     
@@ -418,6 +422,213 @@ class ConversationMemoryTool(ReasoningTool):
                 "error": error_msg
             }
     
+    async def _get_conversation(
+        self,
+        ctx: Optional[Context],
+        conversation_id: str
+    ) -> Dict[str, Any]:
+        """
+        Get a specific conversation by ID
+        
+        Args:
+            ctx: FastMCP context
+            conversation_id: ID of conversation to retrieve
+        
+        Returns:
+            Dict with conversation data
+        """
+        try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
+            # Get specific conversation
+            results = self.collection.get(
+                ids=[conversation_id],
+                include=["documents", "metadatas"]
+            )
+            
+            if not results["ids"] or len(results["ids"]) == 0:
+                return {
+                    "success": False,
+                    "error": f"Conversation with ID '{conversation_id}' not found"
+                }
+            
+            conversation = {
+                "id": results["ids"][0],
+                "document": results["documents"][0] if results["documents"] else None,
+                "metadata": results["metadatas"][0] if results["metadatas"] else None
+            }
+            
+            await self.log_execution(
+                ctx,
+                f"Retrieved conversation: {conversation_id}"
+            )
+            
+            return {
+                "success": True,
+                "conversation": conversation
+            }
+            
+        except Exception as e:
+            error_msg = f"Error retrieving conversation: {str(e)}"
+            await self.log_execution(ctx, error_msg)
+            return {
+                "success": False,
+                "error": error_msg
+            }
+    
+    async def _update_conversation(
+        self,
+        ctx: Optional[Context],
+        conversation_id: str,
+        conversation_text: Optional[str] = None,
+        speaker: Optional[str] = None,
+        summary: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        merge_metadata: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Update an existing conversation
+        
+        Args:
+            ctx: FastMCP context
+            conversation_id: ID of conversation to update
+            conversation_text: New conversation content (optional, keeps existing if None)
+            speaker: New speaker name (optional)
+            summary: New summary (optional)
+            metadata: New metadata (optional)
+            merge_metadata: If True, merge with existing metadata; if False, replace completely
+        
+        Returns:
+            Dict with update confirmation
+        """
+        try:
+            # Ensure collection is available
+            try:
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            except Exception as coll_err:
+                await self.log_execution(ctx, f"Error accessing collection, reinitializing: {coll_err}")
+                self.client = chromadb.PersistentClient(
+                    path=self.persist_directory,
+                    settings=Settings(
+                        anonymized_telemetry=False,
+                        allow_reset=True,
+                        is_persistent=True
+                    )
+                )
+                self.collection = self.client.get_or_create_collection(
+                    name="conversation_memories",
+                    metadata={"description": "Stores important conversation summaries"}
+                )
+            
+            # First, get existing conversation
+            existing = self.collection.get(
+                ids=[conversation_id],
+                include=["documents", "metadatas"]
+            )
+            
+            if not existing["ids"] or len(existing["ids"]) == 0:
+                return {
+                    "success": False,
+                    "error": f"Conversation with ID '{conversation_id}' not found. Use 'store' to create new conversations."
+                }
+            
+            # Get existing data
+            existing_document = existing["documents"][0] if existing["documents"] else ""
+            existing_metadata = existing["metadatas"][0] if existing["metadatas"] else {}
+            
+            # Prepare new document (use existing if not provided)
+            if conversation_text is not None:
+                new_document = summary if summary else conversation_text
+            else:
+                new_document = existing_document
+            
+            # Prepare metadata
+            if merge_metadata and existing_metadata:
+                # Merge with existing metadata
+                meta = existing_metadata.copy()
+            else:
+                # Start fresh
+                meta = {}
+            
+            # Update timestamp
+            meta["timestamp"] = datetime.now().isoformat()
+            meta["updated"] = True
+            
+            # Update fields if provided
+            if conversation_text is not None:
+                meta["has_summary"] = summary is not None
+                meta["character_count"] = len(conversation_text)
+            
+            if speaker is not None:
+                meta["speaker"] = speaker
+            
+            # Add or update custom metadata
+            if metadata:
+                # Sanitize metadata for ChromaDB
+                sanitized_metadata = {}
+                for key, value in metadata.items():
+                    if isinstance(value, (list, tuple)):
+                        sanitized_metadata[key] = ", ".join(str(v) for v in value)
+                    elif isinstance(value, dict):
+                        sanitized_metadata[key] = json.dumps(value)
+                    elif isinstance(value, (str, int, float, bool)) or value is None:
+                        sanitized_metadata[key] = value
+                    else:
+                        sanitized_metadata[key] = str(value)
+                
+                meta.update(sanitized_metadata)
+            
+            # Update in ChromaDB using upsert
+            self.collection.upsert(
+                documents=[new_document],
+                metadatas=[meta],
+                ids=[conversation_id]
+            )
+            
+            await self.log_execution(
+                ctx,
+                f"Updated conversation with ID: {conversation_id}"
+            )
+            
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "message": "Conversation updated successfully",
+                "metadata": meta,
+                "document_length": len(new_document),
+                "was_merged": merge_metadata
+            }
+            
+        except Exception as e:
+            error_msg = f"Error updating conversation: {str(e)}"
+            await self.log_execution(ctx, error_msg)
+            return {
+                "success": False,
+                "error": error_msg
+            }
+
     async def _clear_all(
         self,
         ctx: Optional[Context]

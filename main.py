@@ -93,7 +93,9 @@ if MemoryConfig.ENABLE_CONVERSATION_MEMORY:
         conversation_memory_query,
         conversation_memory_list,
         conversation_memory_delete,
-        conversation_memory_clear
+        conversation_memory_clear,
+        conversation_memory_get,
+        conversation_memory_update
     )
     
     logger.info("Registering Conversation Memory tools...")
@@ -104,6 +106,8 @@ if MemoryConfig.ENABLE_CONVERSATION_MEMORY:
     mcp.tool()(conversation_memory_list)
     mcp.tool()(conversation_memory_delete)
     mcp.tool()(conversation_memory_clear)
+    mcp.tool()(conversation_memory_get)
+    mcp.tool()(conversation_memory_update)
     
     logger.info("Conversation Memory tools registered successfully")
 
