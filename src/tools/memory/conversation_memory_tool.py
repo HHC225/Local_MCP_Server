@@ -101,13 +101,13 @@ class ConversationMemoryTool(ReasoningTool):
         conversation_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Store conversation summary in vector database
+        Store conversation in vector database
         
         Args:
             ctx: FastMCP context
-            conversation_text: The conversation content to store
+            conversation_text: The conversation content to store (always stores full text)
             speaker: Name of the speaker (optional)
-            summary: Summary of the conversation (if None, stores full text)
+            summary: Summary of the conversation (optional, stored in metadata for reference only)
             metadata: Additional metadata to store
             conversation_id: Unique identifier for this conversation (auto-generated if None)
         
@@ -142,18 +142,22 @@ class ConversationMemoryTool(ReasoningTool):
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 conversation_id = f"conv_{timestamp}"
             
-            # Prepare document to store
-            document = summary if summary else conversation_text
+            # Always store full conversation text to prevent information loss
+            document = conversation_text
             
             # Prepare metadata
             meta = {
                 "timestamp": datetime.now().isoformat(),
-                "has_summary": summary is not None,
                 "character_count": len(conversation_text)
             }
             
             if speaker:
                 meta["speaker"] = speaker
+            
+            # Store summary in metadata if provided (for reference only)
+            if summary:
+                meta["summary"] = summary
+                meta["has_summary"] = True
             
             if metadata:
                 # Convert metadata values to ChromaDB-compatible types
@@ -559,8 +563,9 @@ class ConversationMemoryTool(ReasoningTool):
             existing_metadata = existing["metadatas"][0] if existing["metadatas"] else {}
             
             # Prepare new document (use existing if not provided)
+            # Always store full conversation text to prevent information loss
             if conversation_text is not None:
-                new_document = summary if summary else conversation_text
+                new_document = conversation_text
             else:
                 new_document = existing_document
             
@@ -578,11 +583,15 @@ class ConversationMemoryTool(ReasoningTool):
             
             # Update fields if provided
             if conversation_text is not None:
-                meta["has_summary"] = summary is not None
                 meta["character_count"] = len(conversation_text)
             
             if speaker is not None:
                 meta["speaker"] = speaker
+            
+            # Store summary in metadata if provided (for reference only)
+            if summary is not None:
+                meta["summary"] = summary
+                meta["has_summary"] = True
             
             # Add or update custom metadata
             if metadata:

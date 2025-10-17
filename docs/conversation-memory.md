@@ -17,25 +17,30 @@ The Conversation Memory Tool provides persistent storage and semantic retrieval 
 ```
 ┌─────────────────────────────────────────────────────┐
 │  LLM/GitHub Copilot                                 │
-│  (Summarizes conversations)                         │
+│  (Provides conversation context)                    │
 └───────────────┬─────────────────────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────────────────────┐
 │  Conversation Memory Tool                           │
-│  • Store summaries                                  │
-│  • Query conversations                              │
-│  • Track speakers                                   │
+│  • Store full conversations                         │
+│  • Query conversations (semantic search)            │
+│  • Track speakers and metadata                      │
 └───────────────┬─────────────────────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────────────────────┐
 │  ChromaDB Vector Database                           │
-│  • Automatic embeddings                             │
-│  • Semantic search                                  │
-│  • Persistent storage                               │
+│  • Stores complete conversation text                │
+│  • Automatic embeddings for semantic search         │
+│  • Persistent storage on disk                       │
 └─────────────────────────────────────────────────────┘
 ```
+
+**Storage Strategy:**
+- **Full Text Storage**: Complete conversation content is always stored to prevent information loss
+- **Optional Summaries**: Summaries can be provided and are stored in metadata for quick reference
+- **Semantic Search**: Vector embeddings are generated from full text for accurate semantic search
 
 ## Available Tools
 
@@ -44,9 +49,9 @@ The Conversation Memory Tool provides persistent storage and semantic retrieval 
 Store important conversation content in the vector database.
 
 **Parameters:**
-- `conversation_text` (required): Full conversation content to store
+- `conversation_text` (required): Full conversation content to store (always stores complete text to prevent information loss)
 - `speaker` (optional): Name of the speaker (e.g., "User", "GitHub Copilot")
-- `summary` (optional): LLM-generated summary of the conversation (recommended)
+- `summary` (optional): LLM-generated summary of the conversation (stored in metadata for quick reference only)
 - `metadata` (optional): Additional metadata as dict
 - `conversation_id` (optional): Unique identifier (auto-generated if not provided)
 
@@ -59,11 +64,11 @@ Store important conversation content in the vector database.
 **Example Usage:**
 
 ```python
-# Store a conversation with summary
+# Store a conversation (full text is always stored)
 result = await conversation_memory_store(
     conversation_text="User: How should I design the API?\nCopilot: For this use case, REST would be better than GraphQL because...",
     speaker="GitHub Copilot",
-    summary="Discussion about API design: Recommended REST over GraphQL for simple CRUD operations due to lower complexity and better caching.",
+    summary="Discussion about API design: Recommended REST over GraphQL for simple CRUD operations.",
     metadata={
         "topic": "API design",
         "context": "architecture planning",
@@ -72,11 +77,17 @@ result = await conversation_memory_store(
 )
 ```
 
+**Important Notes:**
+1. **Full text storage**: The complete `conversation_text` is always stored in the database to prevent information loss
+2. **Summary as metadata**: If provided, the `summary` is stored in metadata for quick reference but does NOT replace the full text
+3. **Semantic search**: ChromaDB's vector search works on the full conversation text, ensuring all information is searchable
+
 **Best Practices:**
-1. **Always provide summaries**: Let the LLM summarize before storing
+1. **Store complete conversations**: Don't worry about length - full context is preserved
 2. **Include speaker info**: Track who provided the information
 3. **Add meaningful metadata**: Use consistent keys like "topic", "context", "importance"
-4. **Store key decisions**: Focus on important information, not every message
+4. **Optional summaries**: Provide summaries for quick reference in metadata, but the full text is always available
+5. **Store key decisions**: Focus on important information, not every message
 
 ### 2. conversation_memory_query
 
@@ -204,11 +215,11 @@ Update an existing conversation in the database.
 **Example Usage:**
 
 ```python
-# Example 1: Update conversation text and summary
+# Example 1: Update conversation text (summary stored in metadata if provided)
 result = await conversation_memory_update(
     conversation_id="conv_20241014_123456_789012",
-    conversation_text="Updated discussion about API design...",
-    summary="Revised decision: Using GraphQL instead of REST for better flexibility",
+    conversation_text="Updated discussion about API design... [full updated conversation text here]",
+    summary="Revised decision: Using GraphQL instead of REST for better flexibility",  # Stored in metadata
     merge_metadata=True
 )
 
@@ -266,8 +277,11 @@ update_result = await conversation_memory_update(
 When updating a conversation, these fields are automatically set:
 - `timestamp`: Updated to current time (ISO 8601 format)
 - `updated`: Set to `True`
-- `has_summary`: Updated if summary is provided
+- `has_summary`: Set to `True` if summary is provided
+- `summary`: The summary text (stored in metadata for quick reference)
 - `character_count`: Updated if conversation_text is provided
+
+**Note**: The full `conversation_text` is always stored as the main document, while `summary` (if provided) is stored in metadata for convenience.
 
 **Use Cases:**
 - Append new information to existing conversation

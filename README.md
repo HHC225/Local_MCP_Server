@@ -217,26 +217,28 @@ Edit `%APPDATA%\Code\User\mcp.json`:
 
 ### [Conversation Memory](docs/conversation-memory.md)
 
-Store and retrieve important conversation context using ChromaDB vector database.
+Store and retrieve complete conversation context using ChromaDB vector database.
 
-**Best for**: Maintaining context across conversations, remembering important decisions, building knowledge base, updating existing records
+**Best for**: Maintaining full context across conversations, remembering important decisions, building comprehensive knowledge base, updating existing records
 
 **Quick Example**:
 ```
-1. Store conversation summary with speaker info
-2. Query relevant past conversations
+1. Store complete conversation text (full content preserved)
+2. Query relevant past conversations with semantic search
 3. Get specific conversation by ID
 4. Update existing conversations (append info, change status, fix mistakes)
-5. Build context-aware responses with up-to-date information
+5. Build context-aware responses with complete information
 ```
 
 **Key Features**:
-- ✅ **Store**: Save conversations with automatic embeddings
-- 🔍 **Query**: Semantic search for relevant past conversations
+- ✅ **Store**: Save full conversations with automatic embeddings (no information loss)
+- 🔍 **Query**: Semantic search across complete conversation history
 - 📋 **List**: Browse all stored conversations
 - 📖 **Get**: Retrieve specific conversation by ID
 - 🔄 **Update**: Modify existing conversations without losing ID
 - 🗑️ **Delete/Clear**: Remove individual or all conversations
+
+**Important**: Always stores complete conversation text to prevent information loss. Optional summaries can be stored in metadata for quick reference.
 
 [📖 Full Documentation →](docs/conversation-memory.md) | [🔧 Setup Guide →](docs/conversation-memory-setup.md)
 
