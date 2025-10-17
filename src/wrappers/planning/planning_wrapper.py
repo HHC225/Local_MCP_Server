@@ -4,7 +4,7 @@ Planning Tool Wrapper for MCP Registration
 from fastmcp import Context
 from src.tools.planning.planning_tool import PlanningTool
 from configs.planning import PlanningConfig
-from typing import List, Dict, Any, Optional
+from typing import Optional, List, Dict, Any
 
 # Initialize tool instance with configured output directory
 _planning_tool = PlanningTool(default_output_dir=PlanningConfig.PLANNING_OUTPUT_DIR)
@@ -17,7 +17,6 @@ async def planning(
     next_step_needed: bool,
     problem_statement: str = None,
     project_name: str = None,
-    session_id: str = None,
     wbs_items: List[Dict[str, Any]] = None,
     refine_wbs: bool = False,
     is_revision: bool = None,
@@ -59,6 +58,21 @@ async def planning(
     - Hierarchical numbers: ["1.1", "1.2", "2.1"]
     - Task titles: ["Database Setup", "API Configuration"]
     
+    **WBS ITEM STRUCTURE REQUIREMENTS:**
+    Each WBS item must follow this exact structure:
+    ```json
+    {
+        "id": "2.1",                    // Required: Unique identifier
+        "title": "Task Title",          // Required: Task name
+        "description": "Details...",    // Required: Implementation details
+        "level": 1,                     // Required: 0=root, 1,2,3...=child levels
+        "parent_id": "2.0",            // Required for level > 0, null for level 0
+        "priority": "High",            // Required: "High", "Medium", or "Low"
+        "dependencies": ["1.1", "1.2"], // Optional: List of dependency IDs
+        "order": 1                     // Optional: Display order (default: 0)
+    }
+    ```
+    
     ✅ **WBS OUTPUT FORMAT:**
     Generates clean markdown files with:
     - Hierarchical numbered structure (1.1, 1.1.1, 1.1.2, etc.)
@@ -86,29 +100,12 @@ async def planning(
     - **PARENT TASKS (Level 0, 1)**: High-level summaries only, NO implementation details
     - **CHILD TASKS (Level 2+)**: Detailed, actionable implementation instructions
     
-    🔗 **WBS ITEM SCHEMA (Required Fields):**
-    Each WBS item MUST include ALL of these fields:
-    ```json
-    {
-      "id": "1.0",                           // ✅ Unique task identifier (e.g., "1.0", "1.1", "1.1.1")
-      "title": "Task Title",                 // ✅ Short descriptive title
-      "description": "Detailed task...",     // ✅ Full description with requirements
-      "level": 0,                            // ✅ Hierarchy level (0=root, 1=child, 2=grandchild, etc.)
-      "completed": false,                    // ✅ Boolean completion status
-      "priority": "high",                    // ✅ Must be: "high", "medium", or "low" (lowercase!)
-      "order": 1,                            // ✅ Sort order within same level
-      "dependencies": ["1.0"],               // ✅ List of dependent task IDs
-      "estimated_duration_weeks": 2,         // ✅ Time estimate
-      "parentId": null                       // ✅ Parent task ID (null for root items)
-    }
-    ```
-    
-    ⚠️ **COMMON MISTAKES:**
-    - Missing `level` field → Will cause validation error
-    - Missing `completed` field → Will cause validation error
-    - Missing `order` field → Will cause validation error
-    - Using "High" instead of "high" for priority → Validation fails
-    - Not including hierarchical structure → Flat list instead of proper WBS
+    **CRITICAL: PARENT_ID REQUIREMENT:**
+    - **ALL child items (level > 0) MUST specify parent_id explicitly**
+    - **NEVER rely on automatic inference - always provide parent_id**
+    - parent_id must reference an existing parent item's ID
+    - Example: {"id": "2.1", "level": 1, "parent_id": "2.0", ...}
+    - Level 0 items (root) should NOT have parent_id
     
     🔗 **DEPENDENCY SPECIFICATION GUIDELINES:**
     - Use Task IDs, hierarchical numbers, or task titles
@@ -161,7 +158,6 @@ async def planning(
         next_step_needed: Whether more planning steps are needed (required)
         problem_statement: Initial problem statement to break down (for new sessions)
         project_name: Name for the project/planning session (optional)
-        session_id: Existing session ID to continue planning (optional, if not provided, creates new session)
         wbs_items: WBS items to add in this planning step (optional)
         refine_wbs: Whether to refine existing WBS structure (optional)
         is_revision: Whether this revises a previous planning step (optional)
@@ -178,14 +174,16 @@ async def planning(
     Returns:
         JSON response with planning results and WBS summary
     """
-    return await _planning_tool.execute(
+    if ctx:
+        await ctx.info(f"Executing planning step {step_number}/{total_steps}")
+    
+    result = await _planning_tool.execute(
         planning_step=planning_step,
         step_number=step_number,
         total_steps=total_steps,
         next_step_needed=next_step_needed,
         problem_statement=problem_statement,
         project_name=project_name,
-        session_id=session_id,
         wbs_items=wbs_items,
         refine_wbs=refine_wbs,
         is_revision=is_revision,
@@ -200,3 +198,5 @@ async def planning(
         action_description=action_description,
         ctx=ctx
     )
+    
+    return result
