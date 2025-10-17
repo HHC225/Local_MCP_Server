@@ -148,7 +148,135 @@ result = await conversation_memory_list()
 result = await conversation_memory_list(limit=10, offset=20)
 ```
 
-### 4. conversation_memory_delete
+### 4. conversation_memory_get
+
+Get a specific conversation by ID.
+
+**Parameters:**
+- `conversation_id` (required): ID of the conversation to retrieve
+
+**Returns:**
+- `success`: Boolean indicating success
+- `conversation`: Object containing:
+  - `id`: Conversation ID
+  - `document`: Stored content/summary
+  - `metadata`: Associated metadata
+
+**Example Usage:**
+
+```python
+# Retrieve a specific conversation
+result = await conversation_memory_get(
+    conversation_id="conv_20241014_123456_789012"
+)
+
+if result["success"]:
+    conv = result["conversation"]
+    print(f"Content: {conv['document']}")
+    print(f"Metadata: {conv['metadata']}")
+```
+
+**Use Cases:**
+- Review existing conversation before updating
+- Verify conversation content
+- Check metadata of specific entry
+
+### 5. conversation_memory_update
+
+Update an existing conversation in the database.
+
+**Parameters:**
+- `conversation_id` (required): ID of the conversation to update
+- `conversation_text` (optional): New conversation content
+- `speaker` (optional): New speaker name
+- `summary` (optional): New summary
+- `metadata` (optional): New metadata dict
+- `merge_metadata` (optional): If True, merge with existing metadata; if False, replace completely (default: True)
+
+**Returns:**
+- `success`: Boolean indicating success
+- `conversation_id`: ID of updated conversation
+- `message`: Confirmation message
+- `metadata`: Updated metadata
+- `document_length`: Length of updated document
+- `was_merged`: Boolean indicating if metadata was merged
+
+**Example Usage:**
+
+```python
+# Example 1: Update conversation text and summary
+result = await conversation_memory_update(
+    conversation_id="conv_20241014_123456_789012",
+    conversation_text="Updated discussion about API design...",
+    summary="Revised decision: Using GraphQL instead of REST for better flexibility",
+    merge_metadata=True
+)
+
+# Example 2: Add new metadata while keeping existing
+result = await conversation_memory_update(
+    conversation_id="conv_20241014_123456_789012",
+    metadata={
+        "status": "resolved",
+        "reviewed_by": "team_lead"
+    },
+    merge_metadata=True  # Keeps existing metadata, adds/updates these fields
+)
+
+# Example 3: Replace all metadata
+result = await conversation_memory_update(
+    conversation_id="conv_20241014_123456_789012",
+    metadata={
+        "topic": "new_topic",
+        "importance": "low"
+    },
+    merge_metadata=False  # Removes all existing metadata, replaces with new
+)
+
+# Example 4: Update text only (keeps metadata unchanged)
+result = await conversation_memory_update(
+    conversation_id="conv_20241014_123456_789012",
+    conversation_text="Additional information added to the conversation...",
+    # metadata not provided, so existing metadata is preserved
+)
+```
+
+**Update Workflow:**
+
+```python
+# 1. Get existing conversation
+get_result = await conversation_memory_get(
+    conversation_id="conv_20241014_123456_789012"
+)
+
+# 2. Review and modify
+existing_text = get_result["conversation"]["document"]
+updated_text = existing_text + "\n\nAdditional notes: ..."
+
+# 3. Update with changes
+update_result = await conversation_memory_update(
+    conversation_id="conv_20241014_123456_789012",
+    conversation_text=updated_text,
+    metadata={"last_updated": "2024-10-14", "status": "revised"},
+    merge_metadata=True
+)
+```
+
+**Automatic Metadata Updates:**
+
+When updating a conversation, these fields are automatically set:
+- `timestamp`: Updated to current time (ISO 8601 format)
+- `updated`: Set to `True`
+- `has_summary`: Updated if summary is provided
+- `character_count`: Updated if conversation_text is provided
+
+**Use Cases:**
+- Append new information to existing conversation
+- Correct mistakes in stored content
+- Update conversation status or metadata
+- Mark conversations as resolved/in-progress
+- Add review or approval information
+
+### 6. conversation_memory_delete
 
 Delete a specific conversation from the database.
 
@@ -167,7 +295,7 @@ result = await conversation_memory_delete(
 )
 ```
 
-### 5. conversation_memory_clear
+### 7. conversation_memory_clear
 
 Clear all conversations from the database.
 
@@ -244,6 +372,74 @@ await conversation_memory_store(
 result = await conversation_memory_query(
     query_text="API input validation best practices",
     filter_metadata={"category": "best-practices"}
+)
+```
+
+### Example 4: Updating Decisions
+
+```python
+# Initial decision stored
+store_result = await conversation_memory_store(
+    conversation_text="Discussion about database choice...",
+    speaker="Team",
+    summary="Decision: Use MongoDB for flexible schema",
+    metadata={"topic": "database", "status": "decided"}
+)
+
+# Later, requirements change - update the decision
+conv_id = store_result["conversation_id"]
+
+# Get current content to review
+get_result = await conversation_memory_get(conversation_id=conv_id)
+print(f"Current: {get_result['conversation']['document']}")
+
+# Update with new decision
+await conversation_memory_update(
+    conversation_id=conv_id,
+    conversation_text="Discussion about database choice... [Updated] After review, switching to PostgreSQL due to complex relationships.",
+    summary="Decision (Updated): Use PostgreSQL for relational data integrity and complex joins",
+    metadata={
+        "status": "updated",
+        "updated_reason": "requirements_change",
+        "previous_decision": "MongoDB"
+    },
+    merge_metadata=True  # Keeps original topic and adds new fields
+)
+```
+
+### Example 5: Progressive Information Gathering
+
+```python
+# Day 1: Initial information
+result = await conversation_memory_store(
+    conversation_text="Research on caching strategies...",
+    speaker="Developer",
+    summary="Researched Redis and Memcached options",
+    metadata={"topic": "caching", "phase": "research", "completeness": "partial"}
+)
+conv_id = result["conversation_id"]
+
+# Day 2: Add findings
+get_result = await conversation_memory_get(conversation_id=conv_id)
+existing_text = get_result["conversation"]["document"]
+
+await conversation_memory_update(
+    conversation_id=conv_id,
+    conversation_text=existing_text + "\n\n[Day 2] Performance test results: Redis outperforms Memcached by 20% in our use case.",
+    metadata={"completeness": "in-progress", "test_date": "2024-10-15"},
+    merge_metadata=True
+)
+
+# Day 3: Final decision
+get_result = await conversation_memory_get(conversation_id=conv_id)
+final_text = get_result["conversation"]["document"] + "\n\n[Day 3] Final decision: Implementing Redis with cluster mode."
+
+await conversation_memory_update(
+    conversation_id=conv_id,
+    conversation_text=final_text,
+    summary="Caching research and decision: Selected Redis with cluster mode after testing showed 20% better performance",
+    metadata={"completeness": "complete", "status": "implemented"},
+    merge_metadata=True
 )
 ```
 
@@ -339,13 +535,90 @@ Periodically review and clean up:
 - Update important conversations if decisions change
 - Archive old project contexts before starting new projects
 
+**Update vs Delete-and-Recreate:**
+
+✅ **Use update when:**
+- Adding information to existing conversation
+- Correcting mistakes
+- Updating status/metadata
+- Preserving conversation history and ID
+
+❌ **Avoid delete-and-recreate when:**
+- Other parts of your system reference the conversation_id
+- You want to maintain conversation history
+- Only partial updates are needed
+
+**Example: Update instead of delete-recreate**
+
+```python
+# ❌ Old approach: Delete and recreate
+await conversation_memory_delete(conversation_id=old_id)
+await conversation_memory_store(
+    conversation_text=new_text,
+    speaker=speaker,
+    ...
+)  # This creates a NEW conversation_id!
+
+# ✅ Better approach: Update existing
+await conversation_memory_update(
+    conversation_id=old_id,  # Same ID preserved
+    conversation_text=new_text,
+    merge_metadata=True  # Keeps existing metadata
+)
+```
+
+### 6. Metadata Merging Strategy
+
+Choose the right merge strategy:
+
+```python
+# Strategy 1: Merge (default) - Add/update specific fields
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"status": "resolved", "reviewer": "John"},
+    merge_metadata=True  # Keeps all other existing metadata
+)
+
+# Strategy 2: Replace - Complete metadata overwrite
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"topic": "new_topic", "importance": "low"},
+    merge_metadata=False  # Removes all previous metadata
+)
+
+# Strategy 3: Selective field updates - Update only specific fields
+get_result = await conversation_memory_get(conversation_id=conv_id)
+current_meta = get_result["conversation"]["metadata"]
+current_meta["status"] = "in_progress"  # Modify specific field
+current_meta["updated_by"] = "Alice"   # Add new field
+
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata=current_meta,
+    merge_metadata=False  # Use modified metadata
+)
+```
+
 ## Common Use Cases
 
 ### 1. Context Retention
 Store and retrieve context across multiple conversation sessions.
 
-### 2. Decision Log
-Maintain a searchable log of important technical decisions.
+### 2. Decision Log with Updates
+Maintain a searchable log of important technical decisions that can be updated when requirements change.
+
+```python
+# Initial decision
+result = await conversation_memory_store(...)
+decision_id = result["conversation_id"]
+
+# Later update when decision changes
+await conversation_memory_update(
+    conversation_id=decision_id,
+    summary="Updated decision: ...",
+    metadata={"status": "revised", "revision_date": "2024-10-15"}
+)
+```
 
 ### 3. Knowledge Base
 Build a project-specific knowledge base of patterns and solutions.
@@ -355,6 +628,44 @@ Store and query best practices and recommendations.
 
 ### 5. Architecture Documentation
 Track architectural decisions and their rationale.
+
+### 6. Progressive Documentation
+Build documentation incrementally by updating conversations as more information becomes available.
+
+```python
+# Start with initial notes
+result = await conversation_memory_store(
+    summary="Initial API design notes",
+    metadata={"completeness": "draft"}
+)
+
+# Add details over time
+await conversation_memory_update(
+    conversation_id=result["conversation_id"],
+    summary="Complete API design with authentication flow",
+    metadata={"completeness": "final", "reviewed": True},
+    merge_metadata=True
+)
+```
+
+### 7. Status Tracking
+Track the status of conversations and decisions over time.
+
+```python
+# Mark as in-progress
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"status": "in_progress", "assignee": "John"},
+    merge_metadata=True
+)
+
+# Later mark as complete
+await conversation_memory_update(
+    conversation_id=conv_id,
+    metadata={"status": "completed", "completion_date": "2024-10-15"},
+    merge_metadata=True
+)
+```
 
 ## Troubleshooting
 

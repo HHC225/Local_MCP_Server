@@ -84,7 +84,7 @@ async def conversation_memory_query(
         }
     """
     if n_results is None:
-        n_results = ServerConfig.CONVERSATION_MEMORY_DEFAULT_RESULTS
+        n_results = MemoryConfig.CONVERSATION_MEMORY_DEFAULT_RESULTS
         
     return await _memory_tool.execute(
         action="query",
@@ -152,4 +152,99 @@ async def conversation_memory_clear(
     return await _memory_tool.execute(
         action="clear",
         ctx=ctx
+    )
+
+
+async def conversation_memory_get(
+    conversation_id: str,
+    ctx: Context = None
+) -> dict:
+    """
+    Get a specific conversation by ID.
+    
+    This tool retrieves the full content and metadata of a specific conversation.
+    Useful for reviewing or editing existing conversation entries.
+    
+    Args:
+        conversation_id: ID of the conversation to retrieve
+    
+    Returns:
+        dict: Conversation data including document and metadata
+    
+    Example:
+        Get conversation to review before updating:
+        {
+            "conversation_id": "conv_20250117_143022_123456"
+        }
+    """
+    return await _memory_tool.execute(
+        action="get",
+        ctx=ctx,
+        conversation_id=conversation_id
+    )
+
+
+async def conversation_memory_update(
+    conversation_id: str,
+    conversation_text: str = None,
+    speaker: str = None,
+    summary: str = None,
+    metadata: dict = None,
+    merge_metadata: bool = True,
+    ctx: Context = None
+) -> dict:
+    """
+    Update an existing conversation in the database.
+    
+    This tool allows you to modify existing conversation entries. You can update
+    the conversation text, speaker, summary, and/or metadata. By default, metadata
+    is merged with existing metadata, but you can choose to replace it completely.
+    
+    Args:
+        conversation_id: ID of the conversation to update (required)
+        conversation_text: New conversation content (optional, keeps existing if None)
+        speaker: New speaker name (optional, updates if provided)
+        summary: New summary (optional, updates if provided)
+        metadata: New metadata dict (optional, merged or replaced based on merge_metadata)
+        merge_metadata: If True, merge with existing metadata; if False, replace completely (default: True)
+    
+    Returns:
+        dict: Update confirmation with conversation_id and updated metadata
+    
+    Example 1 - Update conversation text and summary:
+        {
+            "conversation_id": "conv_20250117_143022_123456",
+            "conversation_text": "Updated discussion about API design patterns...",
+            "summary": "Revised discussion: Decided to use REST instead of GraphQL",
+            "merge_metadata": True
+        }
+    
+    Example 2 - Add new metadata while keeping existing:
+        {
+            "conversation_id": "conv_20250117_143022_123456",
+            "metadata": {"status": "resolved", "priority": "high"},
+            "merge_metadata": True
+        }
+    
+    Example 3 - Replace all metadata:
+        {
+            "conversation_id": "conv_20250117_143022_123456",
+            "metadata": {"topic": "new_topic", "importance": "low"},
+            "merge_metadata": False
+        }
+    
+    Workflow:
+        1. Use conversation_memory_get to retrieve existing conversation
+        2. Review and modify the content
+        3. Use conversation_memory_update to save changes
+    """
+    return await _memory_tool.execute(
+        action="update",
+        ctx=ctx,
+        conversation_id=conversation_id,
+        conversation_text=conversation_text,
+        speaker=speaker,
+        summary=summary,
+        metadata=metadata,
+        merge_metadata=merge_metadata
     )

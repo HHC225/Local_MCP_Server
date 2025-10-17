@@ -219,14 +219,24 @@ Edit `%APPDATA%\Code\User\mcp.json`:
 
 Store and retrieve important conversation context using ChromaDB vector database.
 
-**Best for**: Maintaining context across conversations, remembering important decisions, building knowledge base
+**Best for**: Maintaining context across conversations, remembering important decisions, building knowledge base, updating existing records
 
 **Quick Example**:
 ```
 1. Store conversation summary with speaker info
 2. Query relevant past conversations
-3. Build context-aware responses
+3. Get specific conversation by ID
+4. Update existing conversations (append info, change status, fix mistakes)
+5. Build context-aware responses with up-to-date information
 ```
+
+**Key Features**:
+- ✅ **Store**: Save conversations with automatic embeddings
+- 🔍 **Query**: Semantic search for relevant past conversations
+- 📋 **List**: Browse all stored conversations
+- 📖 **Get**: Retrieve specific conversation by ID
+- 🔄 **Update**: Modify existing conversations without losing ID
+- 🗑️ **Delete/Clear**: Remove individual or all conversations
 
 [📖 Full Documentation →](docs/conversation-memory.md) | [🔧 Setup Guide →](docs/conversation-memory-setup.md)
 
@@ -331,45 +341,50 @@ Systematic task-by-task execution tool for WBS-based project implementation with
 
 ### [Vibe Coding](docs/vibe-coding.md)
 
-Interactive prompt refinement through **two-phase workflow**: LLM analyzes complexity, then executes structured refinement stages.
+Interactive prompt refinement through **automatic two-phase workflow**: Idea Phase (functional) → Technical Phase (implementation) with seamless transition.
 
-**Best for**: Clarifying vague requirements, exploring implementation options, structured decision-making with progress tracking
+**Best for**: Complete project specification from vague ideas, automatic technical planning, ready-to-implement specifications
 
 **Quick Example**:
 ```
 1. User: "I want to build an API"
-2. AI analyzes → Determines 5 stages needed
-3. AI calls set_total_stages with first question
-4. Stage 1/5 (20%): Architecture? [REST, GraphQL, gRPC]
-5. Stage 2/5 (40%): Authentication? [JWT, OAuth, API Key]
-6. Loop continues through all 5 stages
-7. Get refined specification + feature suggestions
-8. User adds feature → AI extends to 8 stages (same session!)
+2. AI analyzes → Determines 5 idea stages needed
+3. IDEA PHASE (5 stages):
+   Stage 1/5: Architecture? [REST, GraphQL, gRPC]
+   Stage 2/5: Authentication? [JWT, OAuth, API Key]
+   ...
+4. Idea complete → 🔧 AUTO-START Technical Phase!
+5. TECHNICAL PHASE (7 stages automatic):
+   Stage 1/7: App architecture? [Monolithic, Microservices, Serverless]
+   Stage 2/7: Project structure? [Feature-based, Layer-based, Domain-driven]
+   ...
+6. Complete specification (Functional + Technical) ready for WBS!
 ```
 
 **Key Features**:
-- **🔄 Two-Phase Workflow**: Analysis phase (start) → Refinement loop (set_total_stages → respond)
+- **� Automatic Phase Transition**: Idea Phase → Technical Phase (no manual action needed)
 - **🎯 LLM-Driven Analysis**: AI determines total_stages by analyzing prompt complexity
-- **📊 Progress Tracking**: Shows stage X/Y and percentage progress
-- **🌟 Feature Extension**: Add features without session restart
-- **💾 Context Preservation**: All previous decisions maintained
-- **📝 Always Suggest More**: Completed sessions always include feature suggestions
+- **🔧 7 Technical Stages**: Pre-defined templates for complete technical specification
+- **📊 Progress Tracking**: Shows stage X/Y and percentage progress across both phases
+- **🌟 Complete Specifications**: Functional + Technical implementation plan
+- **💾 Context Preservation**: All decisions maintained across phases
 
 **Workflow**:
 1. **start**: User provides vague prompt → Tool creates session
-2. **LLM Analysis**: AI analyzes complexity and determines stages
-3. **set_total_stages**: AI sets total stages and begins refinement
-4. **respond Loop**: Continues through all stages with user input
-5. **Completion**: Shows refined prompt + suggests additional features
-6. **add_feature**: User adds feature → AI extends stages (no restart!)
+2. **LLM Analysis**: AI analyzes complexity and determines idea stages
+3. **set_total_stages**: AI sets total stages and begins idea refinement
+4. **Idea Phase Loop**: Continues through all idea stages with user input
+5. **🔧 Auto-Transition**: Automatically starts Technical Phase (7 stages)
+6. **Technical Phase Loop**: Architecture, structure, database, API, code patterns, security, testing
+7. **Completion**: Complete specification ready for Planning tool → WBS Execution
 
 **Use Cases**:
-- Clarifying vague project requirements with stage planning
-- Exploring architecture alternatives systematically
-- Making informed technology stack decisions
-- Building detailed specifications from ideas
-- Adding features to existing specifications
-- Structured requirement gathering with progress visibility
+- Transform vague ideas into complete project specifications
+- Get both functional AND technical specifications automatically
+- Systematic decision-making for all project aspects
+- Ready-to-implement specs for Planning tool
+- Complete project planning from concept to implementation
+- Bridge business requirements to technical architecture
 
 [📖 Full Documentation →](docs/vibe-coding.md)
 
