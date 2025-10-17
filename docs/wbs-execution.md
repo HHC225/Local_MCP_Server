@@ -46,31 +46,33 @@ This tool bridges the gap between planning and implementation by:
 ### File Structure
 ```
 Local_MCP_Server/
-├── tools/
-│   └── planning/
-│       ├── __init__.py
-│       ├── planning_tool.py           # WBS creation tool
-│       └── wbs_execution_tool.py      # WBS execution tool (NEW)
-├── wrappers/
-│   └── planning/
-│       ├── __init__.py
-│       ├── planning_wrapper.py        # Planning wrapper
-│       └── wbs_execution_wrapper.py   # WBS execution wrapper (NEW)
-├── config.py                          # Configuration (updated)
-├── main.py                            # Main server (updated)
+├── src/
+│   ├── tools/
+│   │   └── planning/
+│   │       ├── __init__.py
+│   │       ├── planning_tool.py           # WBS creation tool
+│   │       └── wbs_execution_tool.py      # WBS execution tool
+│   └── wrappers/
+│       └── planning/
+│           ├── __init__.py
+│           ├── planning_wrapper.py        # Planning wrapper
+│           └── wbs_execution_wrapper.py   # WBS execution wrapper
+├── configs/
+│   └── planning.py                        # Planning & WBS config
+├── main.py                                # Main server (tool registration)
 └── docs/
-    └── wbs-execution.md               # This file
+    └── wbs-execution.md                   # This file
 ```
 
 ### Class Hierarchy
 ```
-BaseTool (base.py)
+BaseTool (src/tools/base.py)
     ↓
-ReasoningTool (base.py)
+ReasoningTool (src/tools/base.py)
     ↓
-WBSExecutionTool (wbs_execution_tool.py)
+WBSExecutionTool (src/tools/planning/wbs_execution_tool.py)
     ↓
-wbs_execution wrapper (wbs_execution_wrapper.py)
+wbs_execution wrapper (src/wrappers/planning/wbs_execution_wrapper.py)
     ↓
 FastMCP registration (main.py)
 ```
@@ -107,7 +109,7 @@ result = await wbs_execution(
 
 ### 2. Continue Execution
 
-Get the next task ready for execution:
+Get the next task ready for execution. The tool returns tasks that are **leaf tasks** (no children), regardless of dependency status for display purposes:
 
 ```python
 result = await wbs_execution(
@@ -126,7 +128,7 @@ result = await wbs_execution(
         "title": "Setup Project Structure",
         "description": "Create basic directory structure and configuration files",
         "priority": "High",
-        "dependencies": ["0"],
+        "dependencies": [],
         "completed": false,
         "level": 1,
         "children": []
@@ -136,14 +138,26 @@ result = await wbs_execution(
         "title": "Initialize Git Repository",
         ...
     },
-    "message": "▶️ Ready to execute: **Setup Project Structure**\n\n🔥 **EXECUTION REQUIREMENTS:**...",
-    "progress": {...}
+    "completedTasksCount": 0,
+    "totalTasksCount": 15,
+    "message": "▶️ Ready to execute: **Setup Project Structure**\n\n🔥 **EXECUTION REQUIREMENTS:**\n- Validate implementation thoroughly\n- Test functionality before marking complete\n- Fix any errors before proceeding\n- Only mark complete when fully working\n\nProgress: 0/15 tasks completed",
+    "progress": {
+        "completed": 0,
+        "total": 15,
+        "percentage": 0
+    }
 }
 ```
 
+**Key Points:**
+- Returns the first available **leaf task** (tasks without children)
+- Parent tasks are automatically skipped
+- Dependencies are NOT checked in `continue` action (only for display)
+- Dependency validation happens during `execute_task` action
+
 ### 3. Execute Task
 
-Execute a specific task with thinking analysis:
+Execute a specific task with thinking analysis. **This is where dependency validation happens**:
 
 ```python
 result = await wbs_execution(
@@ -160,8 +174,17 @@ result = await wbs_execution(
 {
     "success": true,
     "sessionId": "wbs_exec_20250115_143022",
-    "currentTask": {...},
-    "nextAvailableTask": {...},
+    "currentTask": {
+        "id": "1.1",
+        "title": "Setup Project Structure",
+        "completed": true,
+        ...
+    },
+    "nextAvailableTask": {
+        "id": "1.2",
+        "title": "Initialize Git Repository",
+        ...
+    },
     "completedTasksCount": 1,
     "totalTasksCount": 15,
     "message": "✅ Task completed successfully: Setup Project Structure\n\n📋 Next task ready: Initialize Git Repository",
@@ -172,6 +195,15 @@ result = await wbs_execution(
     }
 }
 ```
+
+**Execution Validation:**
+- ✅ Checks if task exists
+- ✅ Checks if task is already completed
+- ✅ Validates task is a leaf task (no children)
+- ✅ **Validates all dependencies are completed**
+- ✅ Updates WBS file checkbox to `[x]`
+- ✅ Auto-completes parent tasks when all children complete
+- ✅ Returns next available task
 
 ### 4. Get Status
 
@@ -326,17 +358,45 @@ Brief description of the problem this project solves.
 
 ### Dependency Resolution
 
-The tool enforces strict dependency resolution:
+The tool enforces dependency resolution **only during execution**:
 
-1. **Leaf Tasks Only**: Only tasks without children can be executed
-2. **Dependency Check**: All dependencies must be completed first
-3. **Parent Auto-completion**: Parents complete when all children complete
+1. **Continue Action**: Shows all available **leaf tasks** (no children), regardless of dependencies
+2. **Execute Action**: Validates dependencies before allowing execution
+3. **Leaf Tasks Only**: Only tasks without children can be executed
+4. **Dependency Check**: All dependencies must be completed first
+5. **Parent Auto-completion**: Parents complete automatically when all children complete
+
+### Dependency Check Flow
+
+```
+Continue Action:
+- Filter: Show only leaf tasks (no children)
+- Order: Sort by task ID (hierarchical numbering)
+- Display: Show all leaf tasks for user awareness
+
+Execute Action:
+- Validate: Check if task is leaf task
+- Validate: Check all dependencies are completed
+- Execute: Complete task and update WBS file
+- Auto-complete: Mark parent tasks when all children done
+```
 
 ### Dependency Formats Supported
 
-- Task IDs: `["1.1", "1.2"]`
-- Hierarchical numbers: `["1", "2.1"]`
-- Task titles: `["Setup Environment", "Install Dependencies"]`
+The parser extracts dependencies from various formats:
+
+```markdown
+<!-- Format 1: Task ID only -->
+- Dependencies: 1.1, 1.2
+
+<!-- Format 2: Task ID with title -->
+- Dependencies: 1.1 (Setup Environment), 1.2 (Install Dependencies)
+
+<!-- Format 3: None -->
+- Dependencies: None
+```
+
+**Parsed Result**: `["1.1", "1.2"]` (only task IDs extracted)
 
 ## Session Management
 
@@ -449,25 +509,37 @@ wbs_result = await wbs_execution(
 
 ## Configuration
 
-### Environment Variables
+### configs/planning.py Settings
+
+```python
+from pathlib import Path
+
+class PlanningConfig:
+    # Feature flags
+    ENABLE_PLANNING_TOOL: bool = True
+    ENABLE_WBS_EXECUTION: bool = True
+    
+    # Output directory (shared with Planning Tool)
+    PLANNING_OUTPUT_DIR: Path = Path("./output/planning")
+    
+    # WBS file settings
+    WBS_FILENAME: str = "WBS.md"
+    WBS_DEFAULT_FORMAT: str = "markdown"
+    WBS_AUTO_VERSION: bool = True
+    
+    # Execution settings
+    WBS_EXECUTION_AUTO_COMPLETE_PARENTS: bool = True
+    WBS_EXECUTION_UPDATE_FILE_REALTIME: bool = True
+```
+
+### Environment Variable Overrides
 
 ```bash
 # Enable/disable WBS Execution Tool
-ENABLE_WBS_EXECUTION_TOOLS=true
+ENABLE_WBS_EXECUTION=true
 
 # Planning output directory (shared with Planning Tool)
 PLANNING_OUTPUT_DIR=./output/planning
-```
-
-### Config.py Settings
-
-```python
-class ServerConfig:
-    # Feature flag
-    ENABLE_WBS_EXECUTION_TOOLS: bool = True
-    
-    # Output directory (shared with Planning Tool)
-    PLANNING_OUTPUT_DIR: Path = OUTPUT_DIR / "planning"
 ```
 
 ## Troubleshooting
@@ -503,25 +575,27 @@ Potential improvements for future versions:
 
 ```python
 async def wbs_execution(
-    action: str,
-    wbs_file_path: str = None,
-    session_id: str = None,
-    task_id: str = None,
-    thinking: str = None,
-    execute_implementation: bool = True,
-    continue_after_completion: bool = False,
-    action_description: str = None,
-    ctx: Context = None
-) -> str
+    action: str,                         # Action type (REQUIRED)
+    wbs_file_path: str = None,           # WBS file path (required for 'start')
+    session_id: str = None,              # Session ID (required for most actions)
+    task_id: str = None,                 # Task ID (required for 'execute_task')
+    thinking: str = None,                # Thinking analysis (optional, for 'execute_task')
+    action_description: str = None,      # Action description (optional, for 'execute_task')
+    execute_implementation: bool = True, # Actually perform implementation (default: True)
+    continue_after_completion: bool = False,  # Auto-continue after task (default: False)
+    **kwargs                             # Additional parameters
+) -> str                                 # Returns JSON string
 ```
 
 ### Actions
 
-- **start**: Begin new execution session
-- **continue**: Get next executable task
-- **execute_task**: Execute specific task
-- **get_status**: Get session status
-- **list_sessions**: List all sessions
+| Action | Required Parameters | Description |
+|--------|-------------------|-------------|
+| `start` | `wbs_file_path` | Begin new execution session |
+| `continue` | `session_id` | Get next executable task (leaf task, any dependency status) |
+| `execute_task` | `session_id`, `task_id` | Execute specific task (validates dependencies) |
+| `get_status` | `session_id` | Get session status |
+| `list_sessions` | None | List all sessions |
 
 ### Return Format
 

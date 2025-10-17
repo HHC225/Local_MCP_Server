@@ -287,13 +287,29 @@ Create structured Work Breakdown Structures (WBS) before implementation to preve
 
 **Best for**: Project decomposition, task planning, WBS creation, dependency mapping
 
+**Key Features**:
+- 🔄 **Automatic session management** - no manual session tracking needed
+- ✅ **Enhanced validation** - CRITICAL parent_id requirements for child items
+- 📝 **Progressive file updates** - exports markdown on completion or on-demand
+- 🔗 **Smart dependency mapping** - validates dependencies and detects circular refs
+- 📊 **Hierarchical numbering** - automatic WBS number generation (1, 1.1, 1.2.1)
+
 **Quick Example**:
 ```
-Step 1: Problem analysis and breakdown
-Step 2: Identify tasks and subtasks with WBS items
-Step 3: Add dependencies and priorities
-Step N: Final WBS export to markdown with checkboxes
+Step 1: Problem analysis → Creates new session automatically
+Step 2: Identify main tasks → Continues session (no session_id needed!)
+Step 3: Add subtasks with parent_id → Validates hierarchy
+Step 4: Map dependencies → Checks for circular dependencies
+Step N: Completion → Auto-exports WBS markdown with checkboxes
 ```
+
+**CRITICAL REQUIREMENTS:**
+- Step 1 MUST include `problem_statement` (creates new session)
+- Step 2+ automatically continues most recent active session
+- Child items (level > 0) MUST specify `parent_id`
+- Dependencies are validated but don't block adding items
+
+[📖 Full Documentation →](docs/planning.md)
 
 [📖 Full Documentation →](docs/planning.md)
 

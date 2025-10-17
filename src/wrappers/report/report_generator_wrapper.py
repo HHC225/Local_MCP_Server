@@ -32,7 +32,7 @@ async def generate_report(
         "key_takeaways": [
           "The single most important finding or conclusion.",
           "Another critical piece of information a leader needs to know.",
-          "A third key insight, if applicable."
+          "More than a third key insight, if applicable."
         ],
         "business_implications": "How does this event affect the business? (e.g., potential revenue loss, customer trust, operational delays)",
         "next_steps_summary": "A high-level summary of what will happen next (e.g., 'A full post-mortem is scheduled', 'Security protocols will be reviewed'). Not a task list."

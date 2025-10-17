@@ -4,6 +4,7 @@ Systematic task-by-task execution tool for WBS-based project implementation
 """
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
+from functools import cmp_to_key
 import json
 import re
 import os
@@ -124,7 +125,7 @@ class WBSExecutionTool(ReasoningTool):
     def _build_task_hierarchy(self, tasks: List[Dict[str, Any]]) -> None:
         """Build parent-child relationships between tasks"""
         # Sort tasks by level and ID for proper hierarchy building
-        tasks.sort(key=lambda t: (t['level'], self._compare_task_ids(t['id'], t['id'])))
+        tasks.sort(key=lambda t: (t['level'], self._parse_id_for_sorting(t['id'])))
         
         for task in tasks:
             if task['level'] == 0:
@@ -233,6 +234,15 @@ class WBSExecutionTool(ReasoningTool):
         
         return 0
     
+    def _parse_id_for_sorting(self, task_id: str) -> List[int]:
+        """
+        Parse task ID for sorting purposes (used as key function)
+        Returns a list of integers representing the hierarchical position
+        Example: "1.2.3" -> [1, 2, 3], "2" -> [2]
+        """
+        numeric_part = task_id.split('_')[0] if '_' in task_id else task_id
+        return [int(part) if part.isdigit() else 1 for part in numeric_part.split('.')]
+    
     # ===== FILE UPDATE METHODS =====
     
     def _update_task_checkbox(self, file_path: str, task: Dict[str, Any], completed: bool) -> None:
@@ -320,7 +330,7 @@ class WBSExecutionTool(ReasoningTool):
             available.append(task)
         
         # Sort by task ID
-        available.sort(key=lambda t: (self._compare_task_ids(t['id'], '0'), t['id']))
+        available.sort(key=lambda t: self._parse_id_for_sorting(t['id']))
         return available
     
     def _get_executable_tasks(self, session: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -348,7 +358,7 @@ class WBSExecutionTool(ReasoningTool):
                 executable.append(task)
         
         # Sort by task ID
-        executable.sort(key=lambda t: (self._compare_task_ids(t['id'], '0'), t['id']))
+        executable.sort(key=lambda t: self._parse_id_for_sorting(t['id']))
         return executable
     
     def _get_executable_task_ids(self, tasks: List[Dict[str, Any]]) -> List[str]:
@@ -364,7 +374,7 @@ class WBSExecutionTool(ReasoningTool):
             executable.append(task['id'])
         
         # Sort by task ID
-        executable.sort(key=lambda a, b: self._compare_task_ids(a, b))
+        executable.sort(key=cmp_to_key(self._compare_task_ids))
         return executable
     
     def _complete_task(self, session: Dict[str, Any], task_id: str, 
